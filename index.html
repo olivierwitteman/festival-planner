@@ -304,6 +304,40 @@
 
   .empty-msg { color: #333; padding: 24px 0; font-size: 11px; letter-spacing: 1px; }
 
+  /* ── SUMMARY TOOLBAR ─────────────────────────────────────────── */
+  .summary-toolbar {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 18px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid var(--border);
+    flex-wrap: wrap;
+  }
+  .summary-toolbar-label {
+    font-size: 10px;
+    letter-spacing: 2px;
+    color: var(--muted);
+    text-transform: uppercase;
+  }
+  .subscribe-btn {
+    margin-left: auto;
+    background: var(--accent);
+    border: 1px solid var(--accent);
+    border-radius: 6px;
+    padding: 6px 14px;
+    color: #fff;
+    font-family: inherit;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 1.5px;
+    cursor: pointer;
+    text-decoration: none;
+    transition: opacity 0.15s;
+    white-space: nowrap;
+  }
+  .subscribe-btn:hover { opacity: 0.85; }
+
   /* ── MOBILE ──────────────────────────────────────────────────── */
   @media (max-width: 480px) {
     .stage-grid { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px; }
@@ -1007,11 +1041,36 @@ function renderCard(act) {
   </div>`;
 }
 
+// webcal:// URL of the daily-regenerated combined feed (see
+// .github/workflows/generate-ics.yml). Returns null when running off
+// file:// where webcal: handlers can't reach a real host.
+function subscribeUrl() {
+  if (location.protocol === 'file:') return null;
+  const dir = location.pathname.replace(/[^/]*$/, '');
+  return `webcal://${location.host}${dir}calendar/everyone.ics`;
+}
+
+function subscribeToolbarHTML(memberCount, totalPicks) {
+  const url = subscribeUrl();
+  const btn = url
+    ? `<a class="subscribe-btn" href="${url}" title="Open in your calendar app — feed refreshes daily">📅 SUBSCRIBE</a>`
+    : '';
+  const label = memberCount
+    ? `${memberCount} ${memberCount === 1 ? 'person' : 'people'} · ${totalPicks} act${totalPicks === 1 ? '' : 's'} picked`
+    : 'NO PICKS YET';
+  return `<div class="summary-toolbar">
+    <span class="summary-toolbar-label">${label}</span>
+    ${btn}
+  </div>`;
+}
+
 function renderSummaryView() {
+  const view    = document.getElementById('summary-view');
   const members = [...new Set(Object.values(db.marks).flat())];
+  const toolbar = subscribeToolbarHTML(members.length, Object.keys(db.marks).length);
+
   if (!members.length) {
-    document.getElementById('summary-view').innerHTML =
-      '<div class="empty-msg">NO PICKS YET — START MARKING ACTS</div>';
+    view.innerHTML = toolbar + '<div class="empty-msg">NO PICKS YET — START MARKING ACTS</div>';
     return;
   }
 
@@ -1042,7 +1101,7 @@ function renderSummaryView() {
     </div>`;
   }).join('');
 
-  document.getElementById('summary-view').innerHTML = html;
+  view.innerHTML = toolbar + html;
 }
 
 

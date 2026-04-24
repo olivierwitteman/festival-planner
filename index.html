@@ -908,7 +908,7 @@ function renderStageView() {
   acts.forEach(a => { if (byStage[a.stage]) byStage[a.stage].push(a); });
 
   const cols = day.stages.map(stage => {
-    const stageActs = byStage[stage].sort((a,b) => a.start.localeCompare(b.start));
+    const stageActs = byStage[stage].sort((a,b) => timeToMins(a.start) - timeToMins(b.start));
     if (!stageActs.length && filterBy !== 'all') return '';
     const cards = stageActs.length
       ? stageActs.map(renderCard).join('')
@@ -959,7 +959,7 @@ function renderSummaryView() {
       .filter(([,v]) => v.includes(name))
       .map(([id]) => allActs.find(a => a.id === id))
       .filter(Boolean)
-      .sort((a,b) => a.start.localeCompare(b.start));
+      .sort((a,b) => timeToMins(a.start) - timeToMins(b.start));
 
     const tags = picked.map(a =>
       `<div class="summary-tag" style="border-color:${rgba(color,0.3)}">

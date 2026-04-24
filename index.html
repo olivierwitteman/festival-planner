@@ -528,7 +528,6 @@ let myColor    = localStorage.getItem('fp_color') || '';
 let activeDay  = 'friday';
 let activeView = 'stage';
 let filterBy   = 'all';
-let saving     = false;
 
 // ─── SYNC ─────────────────────────────────────────────────────────────────────
 const configured = typeof JSONBIN_BIN_ID !== 'undefined'
@@ -560,27 +559,29 @@ async function loadDB() {
   }
 }
 
-async function saveDB() {
-  if (saving) return;
-  saving = true;
+// Debounced save: rapid clicks collapse into one write of the final state
+let saveTimer = null;
+function saveDB() {
   if (!configured) {
     localStorage.setItem('fp_state', JSON.stringify(db));
-    saving = false;
     return;
   }
-  try {
-    syncUI('syncing', 'saving…');
-    const r = await fetch(`https://api.jsonbin.io/v3/b/${JSONBIN_BIN_ID}`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json', 'X-Access-Key': JSONBIN_API_KEY },
-      body: JSON.stringify(db)
-    });
-    if (!r.ok) throw new Error(r.status);
-    syncUI('ok', 'saved');
-  } catch {
-    syncUI('offline', 'save failed');
-  }
-  saving = false;
+  syncUI('syncing', 'saving…');
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(async () => {
+    const snapshot = JSON.stringify(db);
+    try {
+      const r = await fetch(`https://api.jsonbin.io/v3/b/${JSONBIN_BIN_ID}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', 'X-Access-Key': JSONBIN_API_KEY },
+        body: snapshot
+      });
+      if (!r.ok) throw new Error(r.status);
+      syncUI('ok', 'saved');
+    } catch {
+      syncUI('offline', 'save failed');
+    }
+  }, 600);
 }
 
 // ─── USER ─────────────────────────────────────────────────────────────────────

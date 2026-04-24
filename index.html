@@ -105,6 +105,15 @@
   }
   #join-btn:hover { opacity: 0.85; }
 
+  #existing-members {
+    display: none;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-top: 8px;
+    align-items: center;
+  }
+  #existing-members .chip { cursor: pointer; }
+
   #active-user {
     display: none;
     align-items: center;
@@ -263,7 +272,7 @@
     border-radius: 50%;
     border: 2px solid var(--bg);
     display: flex; align-items: center; justify-content: center;
-    font-size: 8px; font-weight: 700; color: #000;
+    font-size: 8px; font-weight: 700;
     flex-shrink: 0;
   }
 
@@ -427,6 +436,8 @@
     <button id="join-btn" onclick="joinFestival()">Join</button>
   </div>
 
+  <div id="existing-members"></div>
+
   <div id="active-user">
     <div id="user-dot"></div>
     <span id="user-label"></span>
@@ -464,9 +475,18 @@
 const POLL_MS = 12000;
 
 const PALETTE = [
-  "#FF5C4D","#4ECDC4","#FFD166","#A8E6CF",
-  "#C3A6FF","#FF8C69","#87CEEB","#F0A500",
-  "#FF6B9D","#06D6A0","#FFC6FF","#CAFFBF"
+  "#E6194B", // red
+  "#3CB44B", // green
+  "#FFE119", // yellow
+  "#4363D8", // blue
+  "#F58231", // orange
+  "#911EB4", // purple
+  "#42D4F4", // cyan
+  "#F032E6", // magenta
+  "#BFEF45", // lime
+  "#FABED4", // pink
+  "#469990", // teal
+  "#9A6324"  // brown
 ];
 
 // ─── LINEUP ───────────────────────────────────────────────────────────────────
@@ -695,16 +715,47 @@ function saveDB() {
 }
 
 // ─── USER ─────────────────────────────────────────────────────────────────────
+function pickNewColor() {
+  const used = new Set(Object.values(db.members));
+  return PALETTE.find(c => !used.has(c))
+      || PALETTE[Object.keys(db.members).length % PALETTE.length];
+}
+
 function joinFestival() {
   const name = document.getElementById('name-input').value.trim();
   if (!name) return;
-  const color = db.members[name] || PALETTE[Object.keys(db.members).length % PALETTE.length];
+
+  const existingColor = db.members[name];
+  if (existingColor && name !== myName) {
+    const proceed = confirm(
+      `"${name}" already exists.\n\n` +
+      `Continue as "${name}" on this device? Picks will sync across every device using this name.\n\n` +
+      `Click Cancel to pick a different name instead.`
+    );
+    if (!proceed) {
+      document.getElementById('name-input').focus();
+      return;
+    }
+  }
+
+  const color = existingColor || pickNewColor();
   myName  = name;
   myColor = color;
   db.members[name] = color;
   localStorage.setItem('fp_name',  name);
   localStorage.setItem('fp_color', color);
   saveDB();
+  updateUserBar();
+  render();
+}
+
+function joinAs(name) {
+  const color = db.members[name];
+  if (!color) return;
+  myName  = name;
+  myColor = color;
+  localStorage.setItem('fp_name',  name);
+  localStorage.setItem('fp_color', color);
   updateUserBar();
   render();
 }
@@ -729,6 +780,37 @@ function updateUserBar() {
     bar.style.display    = 'flex';
     active.style.display = 'none';
   }
+  renderExistingMembers();
+}
+
+function renderExistingMembers() {
+  const container = document.getElementById('existing-members');
+  const names = Object.keys(db.members || {}).sort((a,b) => a.localeCompare(b));
+  if (myName || !names.length) {
+    container.style.display = 'none';
+    container.innerHTML = '';
+    return;
+  }
+  container.style.display = 'flex';
+  container.innerHTML = '';
+  const label = document.createElement('span');
+  label.className = 'filter-label';
+  label.textContent = 'OR JOIN AS:';
+  container.appendChild(label);
+  names.forEach(name => {
+    const color = db.members[name];
+    const btn = document.createElement('button');
+    btn.className = 'chip';
+    btn.style.borderColor = color;
+    btn.style.color = '#fff';
+    const dot = document.createElement('span');
+    dot.className = 'chip-dot';
+    dot.style.background = color;
+    btn.appendChild(dot);
+    btn.appendChild(document.createTextNode(name));
+    btn.onclick = () => joinAs(name);
+    container.appendChild(btn);
+  });
 }
 
 // ─── CONTROLS ─────────────────────────────────────────────────────────────────
@@ -771,9 +853,16 @@ function rgba(hex, a) {
   return `rgba(${r},${g},${b},${a})`;
 }
 
+// Pick black or white text for a given background so the letter stays legible
+function textColor(hex) {
+  const [r,g,b] = [1,3,5].map(i => parseInt(hex.slice(i,i+2),16));
+  return (0.299*r + 0.587*g + 0.114*b) > 140 ? '#000' : '#fff';
+}
+
 // ─── RENDER ───────────────────────────────────────────────────────────────────
 function render() {
   document.getElementById('loading').style.display = 'none';
+  renderExistingMembers();
   renderMembersBar();
   document.getElementById('stage-view').style.display   = activeView === 'stage'   ? 'block' : 'none';
   document.getElementById('summary-view').style.display = activeView === 'summary' ? 'block' : 'none';
@@ -819,7 +908,7 @@ function renderStageView() {
   acts.forEach(a => { if (byStage[a.stage]) byStage[a.stage].push(a); });
 
   const cols = day.stages.map(stage => {
-    const stageActs = byStage[stage].sort((a,b) => a.start.localeCompare(b.start));
+    const stageActs = byStage[stage].sort((a,b) => timeToMins(a.start) - timeToMins(b.start));
     if (!stageActs.length && filterBy !== 'all') return '';
     const cards = stageActs.length
       ? stageActs.map(renderCard).join('')
@@ -844,7 +933,7 @@ function renderCard(act) {
 
   const dots = members.map(n => {
     const c = colorOf(n);
-    return `<span class="act-dot" style="background:${c}" title="${n}">${n[0].toUpperCase()}</span>`;
+    return `<span class="act-dot" style="background:${c};color:${textColor(c)}" title="${n}">${n[0].toUpperCase()}</span>`;
   }).join('');
 
   return `<div class="act-card${isMarked?' marked':''}" ${style} onclick="toggleMark('${act.id}')">
@@ -870,7 +959,7 @@ function renderSummaryView() {
       .filter(([,v]) => v.includes(name))
       .map(([id]) => allActs.find(a => a.id === id))
       .filter(Boolean)
-      .sort((a,b) => a.start.localeCompare(b.start));
+      .sort((a,b) => timeToMins(a.start) - timeToMins(b.start));
 
     const tags = picked.map(a =>
       `<div class="summary-tag" style="border-color:${rgba(color,0.3)}">

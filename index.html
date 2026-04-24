@@ -1,0 +1,603 @@
+<!DOCTYPE html>
+
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Festival Planner 🎪</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Bebas+Neue&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0a0a0a;
+    --surface: #141414;
+    --surface2: #1e1e1e;
+    --border: #2a2a2a;
+    --text: #f0f0f0;
+    --muted: #555;
+    --accent: #FF5C4D;
+    --accent2: #FFD166;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--bg); color: var(--text); font-family: 'Space Mono', monospace; font-size: 13px; min-height: 100vh; }
+
+/* HEADER */
+#header {
+background: var(–surface);
+border-bottom: 2px solid var(–border);
+padding: 14px 16px 10px;
+position: sticky; top: 0; z-index: 100;
+}
+#header h1 { font-family: ‘Bebas Neue’, sans-serif; font-size: 28px; letter-spacing: 4px; color: #fff; line-height: 1; }
+#header .subtitle { font-size: 10px; color: var(–muted); margin-top: 3px; letter-spacing: 1px; }
+.sync-dot { display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: #4CAF50; margin-right: 5px; }
+.sync-dot.syncing { background: var(–accent2); animation: pulse 1s infinite; }
+.sync-dot.offline { background: var(–muted); }
+@keyframes pulse { 0%,100% { opacity:1; } 50% { opacity:0.3; } }
+
+/* NAME INPUT */
+#name-bar { display: flex; gap: 8px; margin-top: 12px; align-items: center; }
+#name-bar input {
+flex: 1; background: var(–surface2); border: 1px solid var(–border);
+border-radius: 6px; padding: 8px 12px; color: var(–text);
+font-family: inherit; font-size: 12px; outline: none;
+transition: border 0.15s;
+}
+#name-bar input:focus { border-color: var(–accent); }
+#name-bar button, .btn {
+background: var(–accent); border: none; border-radius: 6px;
+padding: 8px 16px; color: #fff; cursor: pointer; font-family: inherit;
+font-size: 12px; font-weight: bold; transition: opacity 0.15s;
+white-space: nowrap;
+}
+#name-bar button:hover, .btn:hover { opacity: 0.85; }
+#active-user { display: none; align-items: center; gap: 8px; background: var(–surface2); border-radius: 20px; padding: 6px 12px; }
+#active-user .dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+#active-user .leave { background: none; border: none; color: var(–muted); cursor: pointer; font-size: 11px; padding: 0 2px; }
+
+/* DAY TABS */
+#tabs { display: flex; gap: 4px; margin-top: 12px; flex-wrap: wrap; }
+.tab {
+background: var(–surface2); border: none; border-radius: 6px;
+padding: 6px 14px; color: var(–muted); cursor: pointer;
+font-family: inherit; font-size: 11px; transition: all 0.15s;
+}
+.tab.active { background: var(–accent); color: #fff; font-weight: bold; }
+.view-toggle { margin-left: auto; display: flex; gap: 4px; }
+.vtab { background: var(–surface2); border: none; border-radius: 6px; padding: 6px 12px; color: var(–muted); cursor: pointer; font-family: inherit; font-size: 11px; }
+.vtab.active { background: var(–border); color: #fff; }
+
+/* MEMBERS BAR */
+#members-bar { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; align-items: center; min-height: 24px; }
+#members-bar .label { font-size: 10px; color: #444; letter-spacing: 1px; }
+.member-chip {
+border-radius: 20px; padding: 3px 10px; cursor: pointer;
+font-family: inherit; font-size: 11px; border: 1.5px solid;
+display: flex; align-items: center; gap: 5px; background: none;
+transition: all 0.15s;
+}
+.member-chip .mdot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
+.member-chip.all-chip { border-color: var(–border); color: var(–muted); }
+.member-chip.all-chip.selected { border-color: #fff; color: #fff; background: var(–border); }
+
+/* CONTENT */
+#content { padding: 14px 16px; }
+
+/* STAGE COLUMNS */
+.stage-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(175px, 1fr)); gap: 12px; }
+.stage-col { background: var(–surface); border-radius: 10px; overflow: hidden; border: 1px solid var(–border); }
+.stage-header { background: var(–surface2); padding: 7px 10px; font-size: 10px; font-weight: bold; letter-spacing: 2px; color: #888; text-transform: uppercase; border-bottom: 1px solid var(–border); }
+.stage-acts { padding: 8px; display: flex; flex-direction: column; gap: 5px; }
+
+/* ACT CARD */
+.act-card {
+background: var(–surface2); border: 1.5px solid var(–border);
+border-radius: 8px; padding: 8px 10px; cursor: pointer;
+transition: all 0.12s; user-select: none; position: relative;
+}
+.act-card:hover { border-color: #444; }
+.act-card.marked { background: rgba(255,92,77,0.12); border-color: var(–accent); }
+.act-card .act-name { font-size: 12px; font-weight: bold; color: #ccc; line-height: 1.3; }
+.act-card.marked .act-name { color: #fff; }
+.act-card .act-time { font-size: 10px; color: var(–muted); margin-top: 3px; }
+.act-card .act-dots { display: flex; gap: 3px; margin-top: 6px; flex-wrap: wrap; }
+.act-dot { width: 16px; height: 16px; border-radius: 50%; border: 2px solid var(–bg); display: flex; align-items: center; justify-content: center; font-size: 8px; font-weight: bold; color: #000; flex-shrink: 0; }
+.no-user-hint { font-size: 10px; color: #333; text-align: center; padding: 20px 10px; }
+
+/* CONFLICT BADGE */
+.conflict { font-size: 9px; color: var(–accent2); margin-top: 4px; }
+
+/* SUMMARY VIEW */
+#summary { display: none; }
+.summary-person { margin-bottom: 20px; }
+.summary-person h3 { font-size: 13px; letter-spacing: 2px; margin-bottom: 8px; display: flex; align-items: center; gap: 8px; }
+.summary-acts { display: flex; flex-wrap: wrap; gap: 6px; }
+.summary-tag { border-radius: 4px; padding: 4px 10px; font-size: 11px; border: 1px solid; }
+
+/* MOBILE */
+@media (max-width: 500px) {
+.stage-grid { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px; }
+#header h1 { font-size: 22px; }
+}
+
+/* LOADING */
+#loading { text-align: center; padding: 40px; color: var(–muted); font-size: 12px; letter-spacing: 2px; }
+</style>
+
+</head>
+<body>
+
+<div id="header">
+  <h1>🎪 FESTIVAL PLANNER</h1>
+  <div class="subtitle">
+    <span class="sync-dot" id="sync-dot"></span>
+    <span id="sync-label">connecting...</span>
+  </div>
+
+  <div id="name-bar">
+    <input type="text" id="name-input" placeholder="Enter your name to start marking..." maxlength="20">
+    <button onclick="joinFestival()">Join</button>
+  </div>
+  <div id="active-user">
+    <div class="dot" id="user-dot"></div>
+    <span id="user-label"></span>
+    <button class="leave" onclick="leaveSession()">✕</button>
+  </div>
+
+  <div id="tabs">
+    <button class="tab active" onclick="setDay('friday', this)">Fri 12/06</button>
+    <button class="tab" onclick="setDay('saturday', this)">Sat 13/06</button>
+    <button class="tab" onclick="setDay('sunday', this)">Sun 14/06</button>
+    <div class="view-toggle">
+      <button class="vtab active" id="vt-stage" onclick="setView('stage')">Stage</button>
+      <button class="vtab" id="vt-summary" onclick="setView('summary')">Summary</button>
+    </div>
+  </div>
+
+  <div id="members-bar">
+    <span class="label">FILTER:</span>
+    <button class="member-chip all-chip selected" id="chip-all" onclick="filterMember('all')">
+      <span class="mdot" style="background:#666"></span> All
+    </button>
+  </div>
+</div>
+
+<div id="content">
+  <div id="loading">Loading lineup...</div>
+  <div id="stage-view" style="display:none"></div>
+  <div id="summary-view" style="display:none"></div>
+</div>
+
+<script>
+// ─── CONFIG ───────────────────────────────────────────────────────────────────
+// JSONBin.io: free collaborative storage. 
+// Create a free bin at jsonbin.io, paste the bin ID and API key below.
+// Instructions in README.md
+const JSONBIN_BIN_ID = "YOUR_BIN_ID_HERE";
+const JSONBIN_API_KEY = "YOUR_API_KEY_HERE";
+const POLL_INTERVAL = 12000; // ms
+
+// ─── DATA ─────────────────────────────────────────────────────────────────────
+const MEMBER_COLORS = [
+  "#FF5C4D","#4ECDC4","#FFD166","#A8E6CF","#C3A6FF","#FF8C69","#87CEEB","#F0A500",
+  "#FF6B9D","#06D6A0","#FFC6FF","#CAFFBF"
+];
+
+const DAYS = {
+  friday: {
+    label: "Friday 12/06",
+    stages: ["ONE","TWO","The Secret","The Floor","The Casbah","Not Nothing","The Shore"],
+    acts: [
+      {id:"f1",name:"DJ St. Paul",stage:"The Floor",start:"14:00",end:"17:00"},
+      {id:"f2",name:"Åo",stage:"The Secret",start:"14:30",end:"15:30"},
+      {id:"f3",name:"NewDad",stage:"TWO",start:"15:30",end:"16:15"},
+      {id:"f4",name:"Croithe",stage:"The Casbah",start:"15:15",end:"16:00"},
+      {id:"f5",name:"Fada Jep",stage:"The Shore",start:"16:00",end:"19:00"},
+      {id:"f6",name:"Femi Kuti & The Positive Force",stage:"ONE",start:"16:15",end:"17:15"},
+      {id:"f7",name:"Leoniden",stage:"The Secret",start:"16:15",end:"17:00"},
+      {id:"f8",name:"Rimini Express (Vinyl Only Italo Set)",stage:"The Floor",start:"17:00",end:"18:00"},
+      {id:"f9",name:"Sudan Archives",stage:"TWO",start:"17:15",end:"18:15"},
+      {id:"f10",name:"Pacifica",stage:"The Casbah",start:"16:45",end:"17:30"},
+      {id:"f11",name:"Humanistisch Verbond - Analoog Algoritmes",stage:"Not Nothing",start:"16:45",end:"17:30"},
+      {id:"f12",name:"MAVI",stage:"The Secret",start:"18:00",end:"19:00"},
+      {id:"f13",name:"Curtis Harding",stage:"ONE",start:"18:15",end:"19:15"},
+      {id:"f14",name:"Elmer",stage:"The Casbah",start:"18:15",end:"19:00"},
+      {id:"f15",name:"TBA",stage:"Not Nothing",start:"17:45",end:"18:30"},
+      {id:"f16",name:"Aram Mukanay B2B Deodaat",stage:"Not Nothing",start:"18:30",end:"20:00"},
+      {id:"f17",name:"Bibtiana: music from Île Maurice",stage:"The Shore",start:"19:00",end:"21:00"},
+      {id:"f18",name:"Kaat van Stralen (DJ Set)",stage:"The Floor",start:"19:00",end:"20:00"},
+      {id:"f19",name:"Amaarae",stage:"TWO",start:"19:15",end:"20:15"},
+      {id:"f20",name:"Shady Nasty",stage:"The Casbah",start:"19:45",end:"20:30"},
+      {id:"f21",name:"Model/Actriz",stage:"The Secret",start:"20:00",end:"21:00"},
+      {id:"f22",name:"De La Soul",stage:"ONE",start:"20:15",end:"21:15"},
+      {id:"f23",name:"KINETIKS",stage:"Not Nothing",start:"20:00",end:"22:00"},
+      {id:"f24",name:"Mr. Cutts",stage:"The Floor",start:"21:00",end:"22:00"},
+      {id:"f25",name:"Blood Incantation",stage:"TWO",start:"21:15",end:"22:15"},
+      {id:"f26",name:"Militarie Gun",stage:"The Casbah",start:"21:15",end:"22:00"},
+      {id:"f27",name:"DJ Tracksuit",stage:"The Shore",start:"21:00",end:"23:00"},
+      {id:"f28",name:"Ata Kak",stage:"The Secret",start:"22:00",end:"23:00"},
+      {id:"f29",name:"Jack White",stage:"ONE",start:"22:30",end:"00:00"},
+      {id:"f30",name:"Alice Olsthoorn",stage:"The Floor",start:"22:30",end:"23:30"},
+      {id:"f31",name:"Swordes",stage:"The Casbah",start:"22:45",end:"23:30"},
+      {id:"f32",name:"Mavochi b2b DIEDE",stage:"Not Nothing",start:"22:00",end:"00:00"},
+      {id:"f33",name:"Cami Layé Okùn",stage:"The Shore",start:"23:00",end:"00:30"},
+      {id:"f34",name:"MEROL",stage:"The Secret",start:"23:45",end:"00:45"},
+      {id:"f35",name:"Mula",stage:"TWO",start:"00:00",end:"01:00"},
+      {id:"f36",name:"Ofra",stage:"The Floor",start:"01:00",end:"02:00"},
+      {id:"f37",name:"supermodel*",stage:"The Casbah",start:"00:15",end:"01:00"},
+      {id:"f38",name:"Doppelgang",stage:"Not Nothing",start:"00:00",end:"02:00"},
+      {id:"f39",name:"Susobrino",stage:"The Shore",start:"00:30",end:"02:00"},
+      {id:"f40",name:"Indie Gloria",stage:"The Secret",start:"01:00",end:"02:30"},
+      {id:"f41",name:"Tramhaus (DJ Set)",stage:"The Casbah",start:"01:00",end:"04:00"},
+      {id:"f42",name:"Sedef Adasï",stage:"Not Nothing",start:"02:00",end:"04:00"},
+      {id:"f43",name:"Iliassopdebeat",stage:"The Floor",start:"02:30",end:"04:00"},
+    ]
+  },
+  saturday: {
+    label: "Saturday 13/06",
+    stages: ["ONE","TWO","The Secret","The Floor","The Casbah","Not Nothing","The Shore"],
+    acts: [
+      {id:"s1",name:"mark william lewis",stage:"TWO",start:"12:00",end:"12:45"},
+      {id:"s2",name:"DJ St. Paul",stage:"The Floor",start:"12:00",end:"13:30"},
+      {id:"s3",name:"Bruno Berle",stage:"The Casbah",start:"12:15",end:"13:00"},
+      {id:"s4",name:"Hiqpy",stage:"TWO",start:"13:15",end:"14:00"},
+      {id:"s5",name:"Madra Salach",stage:"The Secret",start:"13:00",end:"13:45"},
+      {id:"s6",name:"Katayoun",stage:"The Floor",start:"13:30",end:"14:30"},
+      {id:"s7",name:"Any Young Mechanic",stage:"The Casbah",start:"13:45",end:"14:30"},
+      {id:"s8",name:"Naïka",stage:"ONE",start:"14:00",end:"14:45"},
+      {id:"s9",name:"De Correspondent - Rob Wijnberg",stage:"Not Nothing",start:"14:00",end:"14:45"},
+      {id:"s10",name:"Weval (live)",stage:"TWO",start:"14:45",end:"15:45"},
+      {id:"s11",name:"Maddie Ashman",stage:"The Secret",start:"14:30",end:"15:15"},
+      {id:"s12",name:"Grote Geelstaart",stage:"The Casbah",start:"15:15",end:"16:00"},
+      {id:"s13",name:"Zo Opgelost",stage:"Not Nothing",start:"15:00",end:"15:45"},
+      {id:"s14",name:"Sef",stage:"ONE",start:"15:45",end:"16:45"},
+      {id:"s15",name:"Madra Salach (mostly Irish DJ set)",stage:"The Floor",start:"15:00",end:"16:00"},
+      {id:"s16",name:"Sorry",stage:"The Secret",start:"16:00",end:"16:45"},
+      {id:"s17",name:"Aldous Harding",stage:"TWO",start:"16:45",end:"17:45"},
+      {id:"s18",name:"Etta Marcus",stage:"The Casbah",start:"16:45",end:"17:30"},
+      {id:"s19",name:"De Correspondent",stage:"Not Nothing",start:"16:00",end:"16:45"},
+      {id:"s20",name:"Disco Horizontes",stage:"The Shore",start:"16:00",end:"19:00"},
+      {id:"s21",name:"Alle Geschiedenis Ooit",stage:"Not Nothing",start:"17:00",end:"17:45"},
+      {id:"s22",name:"Hayley Williams",stage:"ONE",start:"17:45",end:"18:45"},
+      {id:"s23",name:"Radio Free Alice",stage:"The Secret",start:"17:45",end:"18:30"},
+      {id:"s24",name:"Crows",stage:"The Casbah",start:"18:15",end:"19:00"},
+      {id:"s25",name:"Guylian",stage:"Not Nothing",start:"17:45",end:"20:00"},
+      {id:"s26",name:"Ko Kliko",stage:"The Floor",start:"18:00",end:"19:00"},
+      {id:"s27",name:"Nation of Language",stage:"TWO",start:"18:45",end:"19:45"},
+      {id:"s28",name:"Midrift",stage:"The Casbah",start:"19:45",end:"20:30"},
+      {id:"s29",name:"Wolf Alice",stage:"ONE",start:"19:45",end:"20:45"},
+      {id:"s30",name:"Tropical Fuck Storm",stage:"The Secret",start:"19:30",end:"20:30"},
+      {id:"s31",name:"25 Years Of Eskimo Recordings (Nadiem Shah)",stage:"The Floor",start:"19:30",end:"20:30"},
+      {id:"s32",name:"TBA",stage:"The Shore",start:"19:00",end:"21:00"},
+      {id:"s33",name:"Tramhaus",stage:"TWO",start:"20:45",end:"21:45"},
+      {id:"s34",name:"JUUL",stage:"Not Nothing",start:"20:00",end:"22:00"},
+      {id:"s35",name:"GHOSTWOMAN",stage:"The Casbah",start:"21:15",end:"22:00"},
+      {id:"s36",name:"The Zawose Queens",stage:"The Secret",start:"21:30",end:"22:30"},
+      {id:"s37",name:"Ineffekt",stage:"The Floor",start:"21:00",end:"22:00"},
+      {id:"s38",name:"Kebra Ethiopia Soundsystem",stage:"The Shore",start:"21:00",end:"00:00"},
+      {id:"s39",name:"Nick Cave & The Bad Seeds",stage:"ONE",start:"22:00",end:"00:00"},
+      {id:"s40",name:"OG Karin",stage:"Not Nothing",start:"22:00",end:"00:00"},
+      {id:"s41",name:"Kumo 99",stage:"The Casbah",start:"22:45",end:"23:30"},
+      {id:"s42",name:"BCUC",stage:"The Secret",start:"23:30",end:"00:30"},
+      {id:"s43",name:"Nymfo B2B Zohar",stage:"The Floor",start:"23:00",end:"00:00"},
+      {id:"s44",name:"Surusinghe",stage:"Not Nothing",start:"00:00",end:"02:00"},
+      {id:"s45",name:"Bony Fly",stage:"The Shore",start:"00:00",end:"02:00"},
+      {id:"s46",name:"Job Jobse",stage:"TWO",start:"00:00",end:"01:00"},
+      {id:"s47",name:"Dame Area",stage:"The Casbah",start:"00:15",end:"01:00"},
+      {id:"s48",name:"Lucky Done Gone",stage:"The Secret",start:"01:30",end:"04:00"},
+      {id:"s49",name:"Ajuma",stage:"The Floor",start:"01:00",end:"02:00"},
+      {id:"s50",name:"MEROL (DJ Debut)",stage:"The Casbah",start:"01:00",end:"02:00"},
+      {id:"s51",name:"Slimfit",stage:"Not Nothing",start:"02:00",end:"04:00"},
+      {id:"s52",name:"Mia Koden",stage:"The Shore",start:"02:00",end:"04:00"},
+      {id:"s53",name:"The Great Indie Dance Bake Off",stage:"The Floor",start:"02:00",end:"04:00"},
+      {id:"s54",name:"Here's The Thing DJ Set",stage:"The Casbah",start:"02:00",end:"04:00"},
+    ]
+  },
+  sunday: {
+    label: "Sunday 14/06",
+    stages: ["ONE","TWO","The Secret","The Floor","The Casbah","Not Nothing","The Shore"],
+    acts: [
+      {id:"su1",name:"Σtella",stage:"TWO",start:"12:00",end:"12:45"},
+      {id:"su2",name:"DJ St. Paul",stage:"The Floor",start:"12:00",end:"14:00"},
+      {id:"su3",name:"Apichat Pakwan",stage:"The Casbah",start:"12:00",end:"12:45"},
+      {id:"su4",name:"Dressed Like Boys",stage:"The Secret",start:"12:45",end:"13:30"},
+      {id:"su5",name:"DYGL",stage:"The Casbah",start:"13:15",end:"14:00"},
+      {id:"su6",name:"Anna von Hausswolff",stage:"TWO",start:"13:15",end:"14:15"},
+      {id:"su7",name:"Mên An Tol",stage:"The Secret",start:"14:15",end:"15:00"},
+      {id:"su8",name:"Sheyma (Live)",stage:"The Floor",start:"14:00",end:"14:45"},
+      {id:"su9",name:"Jungle By Night",stage:"ONE",start:"14:15",end:"15:00"},
+      {id:"su10",name:"Servo",stage:"The Casbah",start:"14:30",end:"15:15"},
+      {id:"su11",name:"Sophie Straat",stage:"TWO",start:"15:00",end:"15:45"},
+      {id:"su12",name:"KROON (Kypski Live Set)",stage:"The Floor",start:"15:15",end:"16:15"},
+      {id:"su13",name:"TBA",stage:"ONE",start:"15:45",end:"16:45"},
+      {id:"su14",name:"Skullcrusher",stage:"The Secret",start:"15:45",end:"16:30"},
+      {id:"su15",name:"Good Flying Birds",stage:"The Casbah",start:"15:45",end:"16:30"},
+      {id:"su16",name:"Disco Horizontes",stage:"The Shore",start:"16:00",end:"19:00"},
+      {id:"su17",name:"Don West",stage:"TWO",start:"16:45",end:"17:45"},
+      {id:"su18",name:"Girls to the Front (DJ Set)",stage:"The Floor",start:"16:30",end:"17:30"},
+      {id:"su19",name:"Another Country $$$$",stage:"The Casbah",start:"17:15",end:"18:00"},
+      {id:"su20",name:"Ethel Cain",stage:"ONE",start:"17:45",end:"18:45"},
+      {id:"su21",name:"Getdown Services",stage:"The Secret",start:"17:30",end:"18:30"},
+      {id:"su22",name:"Lucky Done Gone B2B Sef",stage:"The Floor",start:"18:00",end:"19:00"},
+      {id:"su23",name:"Yard Act",stage:"TWO",start:"18:45",end:"19:45"},
+      {id:"su24",name:"C'est Qui?",stage:"The Casbah",start:"18:45",end:"19:30"},
+      {id:"su25",name:"Genesis Owusu",stage:"The Secret",start:"19:30",end:"20:30"},
+      {id:"su26",name:"Mac DeMarco",stage:"ONE",start:"19:45",end:"20:45"},
+      {id:"su27",name:"Marie Davidson (DJ set)",stage:"The Floor",start:"19:30",end:"21:00"},
+      {id:"su28",name:"JBN Soundsystem",stage:"The Shore",start:"19:00",end:"21:00"},
+      {id:"su29",name:"Joey Valence & Brae",stage:"TWO",start:"20:45",end:"21:45"},
+      {id:"su30",name:"Lime Garden",stage:"The Casbah",start:"20:15",end:"21:00"},
+      {id:"su31",name:"Aili & Orson (Japanese DJ Set)",stage:"The Floor",start:"21:00",end:"22:00"},
+      {id:"su32",name:"Night Dubbing",stage:"Not Nothing",start:"21:00",end:"23:00"},
+      {id:"su33",name:"TBA",stage:"The Shore",start:"21:00",end:"23:00"},
+      {id:"su34",name:"Gelli Haha",stage:"The Secret",start:"21:30",end:"22:30"},
+      {id:"su35",name:"Gorillaz",stage:"ONE",start:"22:00",end:"23:30"},
+      {id:"su36",name:"WK Nederland - Japan",stage:"The Casbah",start:"22:00",end:"00:00"},
+      {id:"su37",name:"Oceanic (Maximal Minimalism)",stage:"The Floor",start:"22:30",end:"23:30"},
+      {id:"su38",name:"Tim Reaper",stage:"Not Nothing",start:"23:00",end:"00:30"},
+      {id:"su39",name:"Suze Ijó",stage:"The Shore",start:"23:00",end:"00:30"},
+      {id:"su40",name:"Sammy Virji",stage:"TWO",start:"23:30",end:"00:30"},
+      {id:"su41",name:"Parker Fans",stage:"The Secret",start:"23:30",end:"00:30"},
+      {id:"su42",name:"Hiefoda Tunes",stage:"Not Nothing",start:"17:45",end:"21:00"},
+      {id:"su43",name:"Universiteit van Nederland",stage:"Not Nothing",start:"14:00",end:"17:00"},
+    ]
+  }
+};
+
+// ─── STATE ────────────────────────────────────────────────────────────────────
+let state = { marks: {}, members: {} }; // marks: {actId: [name,...]}, members: {name: color}
+let myName = localStorage.getItem('festival_name') || '';
+let myColor = localStorage.getItem('festival_color') || '';
+let activeDay = 'friday';
+let activeView = 'stage';
+let filterBy = 'all';
+let pollTimer = null;
+let isSaving = false;
+
+// ─── JSONBin API ──────────────────────────────────────────────────────────────
+async function loadState() {
+  if (JSONBIN_BIN_ID === 'YOUR_BIN_ID_HERE') {
+    // Demo mode: use localStorage only
+    const saved = localStorage.getItem('festival_state');
+    if (saved) state = JSON.parse(saved);
+    setSyncStatus('demo', 'local mode (see README to enable sync)');
+    return;
+  }
+  try {
+    setSyncStatus('syncing', 'syncing...');
+    const r = await fetch(`https://api.jsonbin.io/v3/b/${JSONBIN_BIN_ID}/latest`, {
+      headers: { 'X-Master-Key': JSONBIN_API_KEY }
+    });
+    const data = await r.json();
+    state = data.record || { marks: {}, members: {} };
+    setSyncStatus('ok', 'synced');
+  } catch(e) {
+    setSyncStatus('offline', 'offline');
+  }
+  render();
+}
+
+async function saveState() {
+  if (isSaving) return;
+  isSaving = true;
+  if (JSONBIN_BIN_ID === 'YOUR_BIN_ID_HERE') {
+    localStorage.setItem('festival_state', JSON.stringify(state));
+    isSaving = false;
+    return;
+  }
+  try {
+    setSyncStatus('syncing', 'saving...');
+    await fetch(`https://api.jsonbin.io/v3/b/${JSONBIN_BIN_ID}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json', 'X-Master-Key': JSONBIN_API_KEY },
+      body: JSON.stringify(state)
+    });
+    setSyncStatus('ok', 'saved');
+  } catch(e) {
+    setSyncStatus('offline', 'save failed');
+  }
+  isSaving = false;
+}
+
+function setSyncStatus(status, label) {
+  const dot = document.getElementById('sync-dot');
+  const lbl = document.getElementById('sync-label');
+  dot.className = 'sync-dot ' + (status === 'ok' ? '' : status);
+  lbl.textContent = label;
+}
+
+// ─── USER ─────────────────────────────────────────────────────────────────────
+function joinFestival() {
+  const name = document.getElementById('name-input').value.trim();
+  if (!name) return;
+  const existingCount = Object.keys(state.members).length;
+  const color = MEMBER_COLORS[existingCount % MEMBER_COLORS.length];
+  myName = name;
+  myColor = state.members[name] || color;
+  state.members[name] = myColor;
+  localStorage.setItem('festival_name', name);
+  localStorage.setItem('festival_color', myColor);
+  saveState();
+  updateUserBar();
+  render();
+}
+
+function leaveSession() {
+  myName = ''; myColor = '';
+  localStorage.removeItem('festival_name');
+  localStorage.removeItem('festival_color');
+  updateUserBar();
+  render();
+}
+
+function updateUserBar() {
+  const bar = document.getElementById('name-bar');
+  const active = document.getElementById('active-user');
+  if (myName) {
+    bar.style.display = 'none';
+    active.style.display = 'flex';
+    document.getElementById('user-dot').style.background = myColor;
+    document.getElementById('user-label').textContent = myName;
+  } else {
+    bar.style.display = 'flex';
+    active.style.display = 'none';
+  }
+}
+
+// ─── INTERACTIONS ─────────────────────────────────────────────────────────────
+function toggleMark(actId) {
+  if (!myName) { document.getElementById('name-input').focus(); return; }
+  const list = state.marks[actId] || [];
+  const idx = list.indexOf(myName);
+  if (idx >= 0) list.splice(idx, 1); else list.push(myName);
+  if (list.length === 0) delete state.marks[actId]; else state.marks[actId] = list;
+  render();
+  saveState();
+}
+
+function setDay(day, el) {
+  activeDay = day;
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  el.classList.add('active');
+  render();
+}
+
+function setView(v) {
+  activeView = v;
+  document.getElementById('vt-stage').classList.toggle('active', v === 'stage');
+  document.getElementById('vt-summary').classList.toggle('active', v === 'summary');
+  render();
+}
+
+function filterMember(name) {
+  filterBy = name;
+  document.querySelectorAll('.member-chip').forEach(c => c.classList.remove('selected'));
+  document.getElementById('chip-' + (name === 'all' ? 'all' : 'mem-' + name))?.classList.add('selected');
+  render();
+}
+
+// ─── RENDER ───────────────────────────────────────────────────────────────────
+function render() {
+  document.getElementById('loading').style.display = 'none';
+  renderMembersBar();
+  if (activeView === 'stage') {
+    document.getElementById('stage-view').style.display = 'block';
+    document.getElementById('summary-view').style.display = 'none';
+    renderStageView();
+  } else {
+    document.getElementById('stage-view').style.display = 'none';
+    document.getElementById('summary-view').style.display = 'block';
+    renderSummaryView();
+  }
+}
+
+function renderMembersBar() {
+  const bar = document.getElementById('members-bar');
+  const allMembers = [...new Set(Object.values(state.marks).flat())];
+  // Remove old member chips
+  bar.querySelectorAll('.mem-chip').forEach(c => c.remove());
+  allMembers.forEach(name => {
+    const color = state.members[name] || '#888';
+    const count = Object.values(state.marks).filter(v => v.includes(name)).length;
+    const btn = document.createElement('button');
+    btn.className = 'member-chip mem-chip' + (filterBy === name ? ' selected' : '');
+    btn.id = 'chip-mem-' + name;
+    btn.style.borderColor = color;
+    btn.style.color = color;
+    if (filterBy === name) btn.style.background = color + '33';
+    btn.innerHTML = `<span class="mdot" style="background:${color}"></span>${name} (${count})`;
+    btn.onclick = () => filterMember(filterBy === name ? 'all' : name);
+    bar.appendChild(btn);
+  });
+  const allChip = document.getElementById('chip-all');
+  allChip.classList.toggle('selected', filterBy === 'all');
+}
+
+function renderStageView() {
+  const day = DAYS[activeDay];
+  const acts = filterBy === 'all' ? day.acts : day.acts.filter(a => (state.marks[a.id]||[]).includes(filterBy));
+  const byStage = {};
+  day.stages.forEach(s => byStage[s] = []);
+  acts.forEach(a => { if (byStage[a.stage]) byStage[a.stage].push(a); });
+
+  const html = `<div class="stage-grid">${
+    day.stages.map(stage => {
+      const stageActs = byStage[stage].sort((a,b) => a.start.localeCompare(b.start));
+      if (!stageActs.length && filterBy !== 'all') return '';
+      return `<div class="stage-col">
+        <div class="stage-header">${stage}</div>
+        <div class="stage-acts">
+          ${stageActs.length ? stageActs.map(act => renderActCard(act)).join('') : '<div style="padding:8px;font-size:10px;color:#333">—</div>'}
+        </div>
+      </div>`;
+    }).join('')
+  }</div>`;
+  document.getElementById('stage-view').innerHTML = html;
+}
+
+function renderActCard(act) {
+  const members = state.marks[act.id] || [];
+  const isMarked = members.includes(myName);
+  const color = myName ? (state.members[myName] || myColor) : '#FF5C4D';
+  const dots = members.map(n => {
+    const c = state.members[n] || '#888';
+    return `<div class="act-dot" style="background:${c}" title="${n}">${n[0].toUpperCase()}</div>`;
+  }).join('');
+  return `<div class="act-card${isMarked?' marked':''}" onclick="toggleMark('${act.id}')"
+    style="${isMarked ? `background:${color}18;border-color:${color}` : ''}">
+    <div class="act-name">${act.name}</div>
+    <div class="act-time">${act.start}–${act.end}</div>
+    ${dots ? `<div class="act-dots">${dots}</div>` : ''}
+  </div>`;
+}
+
+function renderSummaryView() {
+  const allMembers = [...new Set(Object.values(state.marks).flat())];
+  if (!allMembers.length) {
+    document.getElementById('summary-view').innerHTML = '<div style="color:#444;padding:20px;font-size:12px;letter-spacing:1px">No picks yet. Start marking acts!</div>';
+    return;
+  }
+  const html = allMembers.map(name => {
+    const color = state.members[name] || '#888';
+    const allActs = Object.values(DAYS).flatMap(d => d.acts);
+    const picked = Object.entries(state.marks)
+      .filter(([,v]) => v.includes(name))
+      .map(([id]) => allActs.find(a => a.id === id))
+      .filter(Boolean)
+      .sort((a,b) => a.start.localeCompare(b.start));
+    return `<div class="summary-person">
+      <h3 style="color:${color}">
+        <span style="width:12px;height:12px;border-radius:50%;background:${color};display:inline-block"></span>
+        ${name} — ${picked.length} acts
+      </h3>
+      <div class="summary-acts">
+        ${picked.map(a => `<div class="summary-tag" style="border-color:${color}33;color:#ccc">
+          <span style="font-size:10px;color:${color}">${a.stage}</span><br>
+          ${a.name}<br>
+          <span style="font-size:10px;color:#555">${a.start}–${a.end}</span>
+        </div>`).join('')}
+      </div>
+    </div>`;
+  }).join('');
+  document.getElementById('summary-view').innerHTML = html;
+}
+
+// ─── INIT ─────────────────────────────────────────────────────────────────────
+document.getElementById('name-input').addEventListener('keydown', e => { if (e.key === 'Enter') joinFestival(); });
+if (myName) { updateUserBar(); }
+
+loadState().then(() => {
+  // If returning user, restore color from state
+  if (myName && state.members[myName]) myColor = state.members[myName];
+  render();
+  // Poll for updates
+  if (JSONBIN_BIN_ID !== 'YOUR_BIN_ID_HERE') {
+    pollTimer = setInterval(async () => {
+      await loadState();
+      render();
+    }, POLL_INTERVAL);
+  }
+});
+</script>
+
+</body>
+</html>

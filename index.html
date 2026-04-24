@@ -673,6 +673,7 @@ async function loadDB() {
   if (!configured) {
     const s = localStorage.getItem('fp_state');
     if (s) db = JSON.parse(s);
+    applyPending(db);
     syncUI('offline', 'local mode — see README to enable sync');
     return;
   }
@@ -682,15 +683,37 @@ async function loadDB() {
       headers: { 'X-Access-Key': JSONBIN_API_KEY }
     });
     if (!r.ok) throw new Error(r.status);
-    db = (await r.json()).record || { marks:{}, members:{} };
+    const remote = (await r.json()).record || { marks:{}, members:{} };
+    db = remote;
+    applyPending(db);
     syncUI('ok', 'synced');
   } catch {
     syncUI('offline', 'offline');
   }
 }
 
-// Debounced save: rapid clicks collapse into one write of the final state
-let saveTimer = null;
+// Pending toggles the user has made locally that haven't been confirmed on the
+// server yet. Keyed by act id, value is the desired marked state for myName.
+// Re-applied after every load so a poll can't wipe an unsaved click.
+let pendingToggles = {};
+
+function applyPending(state) {
+  if (!state.marks)   state.marks   = {};
+  if (!state.members) state.members = {};
+  if (!myName) return;                       // nothing to replay for an anonymous tab
+  if (myColor) state.members[myName] = myColor;
+  for (const [actId, want] of Object.entries(pendingToggles)) {
+    const list = (state.marks[actId] || []).filter(n => n !== myName);
+    if (want) list.push(myName);
+    if (list.length) state.marks[actId] = list; else delete state.marks[actId];
+  }
+}
+
+// Debounced save: rapid clicks collapse into one fetch-merge-PUT cycle so
+// concurrent edits from other devices aren't clobbered.
+let saveTimer    = null;
+let saveInFlight = false;
+
 function saveDB() {
   if (!configured) {
     localStorage.setItem('fp_state', JSON.stringify(db));
@@ -698,20 +721,59 @@ function saveDB() {
   }
   syncUI('syncing', 'saving…');
   clearTimeout(saveTimer);
-  saveTimer = setTimeout(async () => {
-    const snapshot = JSON.stringify(db);
-    try {
-      const r = await fetch(`https://api.jsonbin.io/v3/b/${JSONBIN_BIN_ID}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json', 'X-Access-Key': JSONBIN_API_KEY },
-        body: snapshot
-      });
-      if (!r.ok) throw new Error(r.status);
-      syncUI('ok', 'saved');
-    } catch {
-      syncUI('offline', 'save failed');
+  saveTimer = setTimeout(doSave, 600);
+}
+
+async function doSave() {
+  if (saveInFlight) {                        // another save still running — try again shortly
+    saveTimer = setTimeout(doSave, 300);
+    return;
+  }
+  saveInFlight = true;
+  const snapshotPending = { ...pendingToggles };
+  const snapshotMembers = { ...db.members };
+  try {
+    // 1. Fetch fresh remote so we don't trample other devices' writes.
+    const fr = await fetch(`https://api.jsonbin.io/v3/b/${JSONBIN_BIN_ID}/latest`, {
+      headers: { 'X-Access-Key': JSONBIN_API_KEY }
+    });
+    if (!fr.ok) throw new Error('load: ' + fr.status);
+    const remote = (await fr.json()).record || { marks:{}, members:{} };
+
+    // 2. Merge: keep everyone else's marks, overlay our own pending toggles.
+    const merged = {
+      marks:   { ...(remote.marks   || {}) },
+      members: { ...(remote.members || {}), ...snapshotMembers }
+    };
+    for (const [actId, want] of Object.entries(snapshotPending)) {
+      const list = (merged.marks[actId] || []).filter(n => n !== myName);
+      if (want) list.push(myName);
+      if (list.length) merged.marks[actId] = list; else delete merged.marks[actId];
     }
-  }, 600);
+
+    // 3. PUT the merged state.
+    const wr = await fetch(`https://api.jsonbin.io/v3/b/${JSONBIN_BIN_ID}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json', 'X-Access-Key': JSONBIN_API_KEY },
+      body: JSON.stringify(merged)
+    });
+    if (!wr.ok) throw new Error('save: ' + wr.status);
+
+    // 4. Adopt merged state and drop pending toggles that we just persisted.
+    //    Any toggle the user made *during* the save stays in pendingToggles
+    //    (its value will differ from the snapshot) and triggers another save.
+    db = merged;
+    applyPending(db);
+    for (const [k, v] of Object.entries(snapshotPending)) {
+      if (pendingToggles[k] === v) delete pendingToggles[k];
+    }
+    syncUI('ok', 'saved');
+    render();
+  } catch {
+    syncUI('offline', 'save failed');         // pending toggles preserved → next click retries
+  } finally {
+    saveInFlight = false;
+  }
 }
 
 // ─── USER ─────────────────────────────────────────────────────────────────────
@@ -762,6 +824,7 @@ function joinAs(name) {
 
 function leaveSession() {
   myName = ''; myColor = '';
+  pendingToggles = {};
   localStorage.removeItem('fp_name');
   localStorage.removeItem('fp_color');
   updateUserBar();
@@ -816,10 +879,11 @@ function renderExistingMembers() {
 // ─── CONTROLS ─────────────────────────────────────────────────────────────────
 function toggleMark(actId) {
   if (!myName) { document.getElementById('name-input').focus(); return; }
-  const list = db.marks[actId] ? [...db.marks[actId]] : [];
-  const idx  = list.indexOf(myName);
-  if (idx >= 0) list.splice(idx, 1); else list.push(myName);
-  if (list.length === 0) delete db.marks[actId]; else db.marks[actId] = list;
+  const isMarked = (db.marks[actId] || []).includes(myName);
+  pendingToggles[actId] = !isMarked;
+  const list = (db.marks[actId] || []).filter(n => n !== myName);
+  if (!isMarked) list.push(myName);
+  if (list.length) db.marks[actId] = list; else delete db.marks[actId];
   render();
   saveDB();
 }

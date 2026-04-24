@@ -550,7 +550,7 @@ async function loadDB() {
   try {
     syncUI('syncing', 'syncing…');
     const r = await fetch(`https://api.jsonbin.io/v3/b/${JSONBIN_BIN_ID}/latest`, {
-      headers: { 'X-Master-Key': JSONBIN_API_KEY }
+      headers: { 'X-Access-Key': JSONBIN_API_KEY }
     });
     if (!r.ok) throw new Error(r.status);
     db = (await r.json()).record || { marks:{}, members:{} };
@@ -572,7 +572,7 @@ async function saveDB() {
     syncUI('syncing', 'saving…');
     const r = await fetch(`https://api.jsonbin.io/v3/b/${JSONBIN_BIN_ID}`, {
       method: 'PUT',
-      headers: { 'Content-Type': 'application/json', 'X-Master-Key': JSONBIN_API_KEY },
+      headers: { 'Content-Type': 'application/json', 'X-Access-Key': JSONBIN_API_KEY },
       body: JSON.stringify(db)
     });
     if (!r.ok) throw new Error(r.status);

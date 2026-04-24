@@ -304,39 +304,68 @@
 
   .empty-msg { color: #333; padding: 24px 0; font-size: 11px; letter-spacing: 1px; }
 
-  /* ── SUMMARY TOOLBAR ─────────────────────────────────────────── */
-  .summary-toolbar {
+  /* ── SUBSCRIBE CTA ───────────────────────────────────────────── */
+  .subscribe-cta {
     display: flex;
     align-items: center;
-    gap: 10px;
+    gap: 18px;
+    padding: 18px 20px;
     margin-bottom: 18px;
-    padding-bottom: 12px;
-    border-bottom: 1px solid var(--border);
+    background:
+      linear-gradient(135deg, rgba(255,92,77,0.18), rgba(255,209,102,0.08));
+    border: 1px solid var(--accent);
+    border-radius: 12px;
     flex-wrap: wrap;
+    box-shadow: 0 0 0 1px rgba(255,92,77,0.15), 0 8px 24px rgba(255,92,77,0.08);
   }
-  .summary-toolbar-label {
+  .subscribe-cta-icon {
+    font-size: 28px;
+    line-height: 1;
+    flex-shrink: 0;
+  }
+  .subscribe-cta-text { flex: 1; min-width: 180px; }
+  .subscribe-cta-title {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 22px;
+    letter-spacing: 3px;
+    color: #fff;
+    line-height: 1.1;
+  }
+  .subscribe-cta-sub {
+    font-size: 11px;
+    color: #bbb;
+    line-height: 1.5;
+    margin-top: 4px;
+  }
+  .subscribe-btn {
+    background: var(--accent);
+    border: none;
+    border-radius: 8px;
+    padding: 12px 22px;
+    color: #fff;
+    font-family: inherit;
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 2px;
+    cursor: pointer;
+    text-decoration: none;
+    transition: transform 0.12s ease, box-shadow 0.12s ease, opacity 0.12s ease;
+    white-space: nowrap;
+    box-shadow: 0 2px 14px rgba(255,92,77,0.45);
+    flex-shrink: 0;
+  }
+  .subscribe-btn:hover  { transform: translateY(-1px); box-shadow: 0 6px 20px rgba(255,92,77,0.6); }
+  .subscribe-btn:active { transform: translateY(0); opacity: 0.92; }
+
+  .summary-stats {
     font-size: 10px;
     letter-spacing: 2px;
     color: var(--muted);
     text-transform: uppercase;
+    margin-bottom: 18px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid var(--border);
   }
-  .subscribe-btn {
-    margin-left: auto;
-    background: var(--accent);
-    border: 1px solid var(--accent);
-    border-radius: 6px;
-    padding: 6px 14px;
-    color: #fff;
-    font-family: inherit;
-    font-size: 11px;
-    font-weight: 700;
-    letter-spacing: 1.5px;
-    cursor: pointer;
-    text-decoration: none;
-    transition: opacity 0.15s;
-    white-space: nowrap;
-  }
-  .subscribe-btn:hover { opacity: 0.85; }
 
   /* ── MOBILE ──────────────────────────────────────────────────── */
   @media (max-width: 480px) {
@@ -1050,27 +1079,32 @@ function subscribeUrl() {
   return `webcal://${location.host}${dir}calendar/everyone.ics`;
 }
 
-function subscribeToolbarHTML(memberCount, totalPicks) {
+function subscribeCTA() {
   const url = subscribeUrl();
-  const btn = url
-    ? `<a class="subscribe-btn" href="${url}" title="Open in your calendar app — feed refreshes daily">📅 SUBSCRIBE</a>`
-    : '';
-  const label = memberCount
-    ? `${memberCount} ${memberCount === 1 ? 'person' : 'people'} · ${totalPicks} act${totalPicks === 1 ? '' : 's'} picked`
-    : 'NO PICKS YET';
-  return `<div class="summary-toolbar">
-    <span class="summary-toolbar-label">${label}</span>
-    ${btn}
+  if (!url) return '';
+  return `<div class="subscribe-cta">
+    <div class="subscribe-cta-icon">📅</div>
+    <div class="subscribe-cta-text">
+      <div class="subscribe-cta-title">ADD TO YOUR CALENDAR</div>
+      <div class="subscribe-cta-sub">Live feed of every pick — refreshes daily, your calendar stays in sync without opening this app.</div>
+    </div>
+    <a class="subscribe-btn" href="${url}" title="Opens in your calendar app · webcal://">SUBSCRIBE →</a>
   </div>`;
+}
+
+function summaryStatsHTML(memberCount, totalPicks) {
+  if (!memberCount) return '';
+  return `<div class="summary-stats">${memberCount} ${memberCount === 1 ? 'person' : 'people'} · ${totalPicks} act${totalPicks === 1 ? '' : 's'} picked</div>`;
 }
 
 function renderSummaryView() {
   const view    = document.getElementById('summary-view');
   const members = [...new Set(Object.values(db.marks).flat())];
-  const toolbar = subscribeToolbarHTML(members.length, Object.keys(db.marks).length);
+  const cta     = subscribeCTA();
+  const stats   = summaryStatsHTML(members.length, Object.keys(db.marks).length);
 
   if (!members.length) {
-    view.innerHTML = toolbar + '<div class="empty-msg">NO PICKS YET — START MARKING ACTS</div>';
+    view.innerHTML = cta + '<div class="empty-msg">NO PICKS YET — START MARKING ACTS</div>';
     return;
   }
 
@@ -1101,7 +1135,7 @@ function renderSummaryView() {
     </div>`;
   }).join('');
 
-  view.innerHTML = toolbar + html;
+  view.innerHTML = cta + stats + html;
 }
 
 

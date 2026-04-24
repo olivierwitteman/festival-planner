@@ -52,6 +52,23 @@ Send `https://yourusername.github.io/festival-planner` to your group. Everyone:
 - **Auto-sync** — polls every 12 seconds, no refresh needed
 - **Mobile-first** — works great on phones
 
+## 📅 Subscribe to a live calendar feed
+
+A daily GitHub Action regenerates `.ics` files in `calendar/` from the shared
+JSONBin and commits them back. Once the action has run at least once, point
+any calendar app (Apple, Google, Outlook, Fantastical…) at:
+
+- **Everyone's picks** — `webcal://<user>.github.io/<repo>/calendar/everyone.ics`
+- **One person's picks** — `webcal://<user>.github.io/<repo>/calendar/person-<name>.ics`
+
+The action runs daily at 05:00 UTC (workflow file:
+`.github/workflows/generate-ics.yml`); trigger it on demand from the Actions
+tab. By default it reads JSONBin credentials from `config.js`. To override,
+set `JSONBIN_BIN_ID` and `JSONBIN_API_KEY` as repository secrets.
+
+> Calendar apps re-poll subscriptions on their own schedule (typically every
+> 1–24 h), so changes can take up to a day to land.
+
 ## 🛠 No-backend option
 
 If you don’t want to set up JSONBin, the app runs in **local mode** — each device saves its own state. Good enough for planning individually, but picks won’t sync across devices.

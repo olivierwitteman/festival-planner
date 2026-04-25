@@ -1077,6 +1077,36 @@
   .list-claim-btn:hover  { color: var(--text); border-color: #555; }
   .list-claim-btn.active { color: #fff; border-color: #3CB44B; background: rgba(60,180,75,0.18); }
 
+  .list-priority-section {
+    font-size: 9px;
+    letter-spacing: 2px;
+    color: var(--muted);
+    text-transform: uppercase;
+    padding: 10px 0 4px;
+    margin-top: 4px;
+    border-top: 1px solid var(--border);
+  }
+  .list-priority-section:first-child { border-top: none; margin-top: 0; padding-top: 0; }
+
+  .list-priority-badge {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 12px;
+    letter-spacing: 1px;
+    border-radius: 4px;
+    border: 1.5px solid;
+    padding: 1px 6px;
+    cursor: pointer;
+    background: none;
+    line-height: 1.5;
+    flex-shrink: 0;
+    transition: opacity 0.15s;
+  }
+  .list-priority-badge:hover { opacity: 0.7; }
+  .list-priority-badge.M { color: #FF5C4D; border-color: #FF5C4D; }
+  .list-priority-badge.S { color: #F59E0B; border-color: #F59E0B; }
+  .list-priority-badge.C { color: #38BDF8; border-color: #38BDF8; }
+  .list-priority-badge.W { color: var(--muted); border-color: #333; }
+
   #list-empty {
     color: #333;
     padding: 32px 0;
@@ -1463,8 +1493,9 @@ let pendingToggles = {};
 //   { actId, x, y, t } or { actId, clear: true, t }.
 let pendingLocation = null;
 // Pending bring-list operations to replay onto the merged state on save.
-// Each op: { type:'add', id, text, addedBy, addedAt }
+// Each op: { type:'add', id, text, addedBy, addedAt, priority }
 //        | { type:'claim', id, name, want:bool }
+//        | { type:'priority', id, priority:'M'|'S'|'C'|'W' }
 //        | { type:'remove', id }
 let pendingListOps = [];
 
@@ -1476,6 +1507,7 @@ function applyListOp(state, op) {
         text:      op.text,
         addedBy:   op.addedBy,
         addedAt:   op.addedAt,
+        priority:  op.priority || 'S',
         claimedBy: []
       };
     }
@@ -1485,6 +1517,9 @@ function applyListOp(state, op) {
     const claimers = (item.claimedBy || []).filter(n => n !== op.name);
     if (op.want) claimers.push(op.name);
     item.claimedBy = claimers;
+  } else if (op.type === 'priority') {
+    const item = state.list[op.id];
+    if (item) item.priority = op.priority;
   } else if (op.type === 'remove') {
     delete state.list[op.id];
   }
@@ -2283,11 +2318,12 @@ function addListItem() {
   const text  = input.value.trim();
   if (!text) return;
   const op = {
-    type:    'add',
-    id:      newListId(),
+    type:     'add',
+    id:       newListId(),
     text,
-    addedBy: myName,
-    addedAt: Date.now()
+    addedBy:  myName,
+    addedAt:  Date.now(),
+    priority: 'S'
   };
   pendingListOps.push(op);
   applyListOp(db, op);
@@ -2320,17 +2356,47 @@ function removeListItem(id) {
   saveDB();
 }
 
+const PRIORITY_ORDER = ['M', 'S', 'C', 'W'];
+const PRIORITY_LABEL = { M: 'Must Have', S: 'Should Have', C: 'Could Have', W: "Won't Have" };
+const PRIORITY_CYCLE = { M: 'S', S: 'C', C: 'W', W: 'M' };
+
+function setListPriority(id) {
+  const item = (db.list || {})[id];
+  if (!item) return;
+  const next = PRIORITY_CYCLE[item.priority || 'S'];
+  const op = { type: 'priority', id, priority: next };
+  pendingListOps.push(op);
+  applyListOp(db, op);
+  renderListView();
+  saveDB();
+}
+
 function renderListView() {
   const container = document.getElementById('list-items');
   const empty     = document.getElementById('list-empty');
   const items = Object.entries(db.list || {})
     .filter(([, it]) => it && typeof it.text === 'string')
-    .sort((a, b) => (a[1].addedAt || 0) - (b[1].addedAt || 0));
+    .sort((a, b) => {
+      const pa = PRIORITY_ORDER.indexOf(a[1].priority || 'S');
+      const pb = PRIORITY_ORDER.indexOf(b[1].priority || 'S');
+      return pa !== pb ? pa - pb : (a[1].addedAt || 0) - (b[1].addedAt || 0);
+    });
 
   empty.style.display = items.length ? 'none' : 'block';
   container.innerHTML = '';
 
+  let lastPriority = null;
   items.forEach(([id, item]) => {
+    const p = item.priority || 'S';
+
+    if (p !== lastPriority) {
+      const section = document.createElement('div');
+      section.className = 'list-priority-section';
+      section.textContent = PRIORITY_LABEL[p];
+      container.appendChild(section);
+      lastPriority = p;
+    }
+
     const claimers = item.claimedBy || [];
     const mineClaimed = myName && claimers.includes(myName);
 
@@ -2339,6 +2405,14 @@ function renderListView() {
 
     const top = document.createElement('div');
     top.className = 'list-item-top';
+
+    const badge = document.createElement('button');
+    badge.className = `list-priority-badge ${p}`;
+    badge.textContent = p;
+    badge.title = `Priority: ${PRIORITY_LABEL[p]} — click to change`;
+    badge.onclick = () => setListPriority(id);
+    top.appendChild(badge);
+
     const text = document.createElement('span');
     text.className = 'list-item-text';
     text.textContent = item.text;

@@ -786,6 +786,7 @@
     color: #fff;
     line-height: 1.25;
     overflow: hidden;
+    flex-shrink: 0;
     display: -webkit-box;
     -webkit-line-clamp: 2;
     -webkit-box-orient: vertical;
@@ -1208,6 +1209,108 @@
     text-align: center;
   }
 
+  /* ── ACT EDIT MODAL ─────────────────────────────────────────── */
+  .act-edit-btn {
+    background: none;
+    border: none;
+    color: #444;
+    font-size: 12px;
+    line-height: 1;
+    cursor: pointer;
+    padding: 0 2px;
+    flex-shrink: 0;
+    opacity: 0;
+    transition: opacity 0.15s, color 0.15s;
+  }
+  .act-card:hover .act-edit-btn { opacity: 1; }
+  .act-edit-btn:hover { color: var(--text); }
+
+  .act-notes {
+    font-size: 10px;
+    color: var(--muted);
+    margin-top: 4px;
+    line-height: 1.5;
+    font-style: italic;
+  }
+
+  #act-modal-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.7);
+    z-index: 500;
+    align-items: center;
+    justify-content: center;
+    padding: 16px;
+  }
+  #act-modal-overlay.open { display: flex; }
+  #act-modal {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 20px;
+    width: 100%;
+    max-width: 420px;
+  }
+  #act-modal-title {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 20px;
+    letter-spacing: 3px;
+    color: #fff;
+    line-height: 1.1;
+  }
+  #act-modal-meta {
+    font-size: 10px;
+    letter-spacing: 1px;
+    color: var(--muted);
+    text-transform: uppercase;
+    margin-top: 4px;
+    margin-bottom: 16px;
+  }
+  #act-modal-notes {
+    width: 100%;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 10px 12px;
+    color: var(--text);
+    font-family: inherit;
+    font-size: 12px;
+    line-height: 1.6;
+    resize: vertical;
+    min-height: 80px;
+    outline: none;
+  }
+  #act-modal-notes:focus { border-color: var(--accent); }
+  #act-modal-notes::placeholder { color: #444; }
+  .act-modal-actions {
+    display: flex;
+    gap: 8px;
+    margin-top: 12px;
+    justify-content: flex-end;
+  }
+  #act-modal-save {
+    background: var(--accent);
+    border: none;
+    border-radius: 6px;
+    padding: 8px 18px;
+    color: #fff;
+    font-family: inherit;
+    font-size: 12px;
+    font-weight: 700;
+    cursor: pointer;
+  }
+  #act-modal-cancel {
+    background: none;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 8px 14px;
+    color: var(--muted);
+    font-family: inherit;
+    font-size: 12px;
+    cursor: pointer;
+  }
+  #act-modal-cancel:hover { color: var(--text); border-color: #555; }
 </style>
 </head>
 <body>
@@ -1543,7 +1646,7 @@ const DAYS = {
 };
 
 // ─── STATE ────────────────────────────────────────────────────────────────────
-let db         = { marks: {}, members: {}, locations: {}, list: {}, want: {}, ratings: {} };
+let db         = { marks: {}, members: {}, locations: {}, list: {}, want: {}, ratings: {}, actEdits: {} };
 let mapStage   = '';
 let myName     = localStorage.getItem('fp_name')  || '';
 let myColor    = localStorage.getItem('fp_color') || '';
@@ -1592,6 +1695,8 @@ async function loadDB() {
 let pendingToggles = {};
 // Pending "want to see" planning scores: { [actId]: 1-5 }
 let pendingWant = {};
+// Pending act-level edits: { [actId]: { notes } }
+let pendingActEdits = {};
 // Pending retrospective ratings: { [actId]: 1-5 }
 let pendingRatings = {};
 // Pending pin placement scoped to a specific act:
@@ -1635,8 +1740,9 @@ function applyPending(state) {
   if (!state.members)    state.members    = {};
   if (!state.locations)  state.locations  = {};
   if (!state.list)       state.list       = {};
-  if (!state.want)    state.want    = {};
-  if (!state.ratings) state.ratings = {};
+  if (!state.want)     state.want     = {};
+  if (!state.ratings)  state.ratings  = {};
+  if (!state.actEdits) state.actEdits = {};
   if (myName && myColor) state.members[myName] = myColor;
   if (myName) {
     for (const [actId, toggle] of Object.entries(pendingToggles)) {
@@ -1649,6 +1755,9 @@ function applyPending(state) {
     }
     if (Object.keys(pendingRatings).length) {
       state.ratings[myName] = { ...(state.ratings[myName] || {}), ...pendingRatings };
+    }
+    for (const [actId, edit] of Object.entries(pendingActEdits)) {
+      state.actEdits[actId] = { ...(state.actEdits[actId] || {}), ...edit };
     }
     if (pendingLocation && pendingLocation.stage) {
       const stg = pendingLocation.stage;
@@ -1683,10 +1792,11 @@ async function doSave() {
     return;
   }
   saveInFlight = true;
-  const snapshotPending  = { ...pendingToggles };
-  const snapshotWant     = { ...pendingWant };
-  const snapshotRatings  = { ...pendingRatings };
-  const snapshotMembers  = myName ? { [myName]: db.members[myName] } : {};
+  const snapshotPending   = { ...pendingToggles };
+  const snapshotWant      = { ...pendingWant };
+  const snapshotRatings   = { ...pendingRatings };
+  const snapshotActEdits  = { ...pendingActEdits };
+  const snapshotMembers   = myName ? { [myName]: db.members[myName] } : {};
   const snapshotLocation   = pendingLocation;
   const snapshotListOps    = pendingListOps.slice();
   try {
@@ -1695,17 +1805,21 @@ async function doSave() {
       headers: { 'X-Access-Key': JSONBIN_API_KEY }
     });
     if (!fr.ok) throw new Error('load: ' + fr.status);
-    const remote = (await fr.json()).record || { marks:{}, members:{}, locations:{}, list:{}, want:{}, ratings:{} };
+    const remote = (await fr.json()).record || { marks:{}, members:{}, locations:{}, list:{}, want:{}, ratings:{}, actEdits:{} };
 
     // 2. Merge: keep everyone else's marks / pins / items, overlay our pending edits.
     const merged = {
-      marks:    { ...(remote.marks   || {}) },
-      members:  { ...(remote.members || {}), ...snapshotMembers },
+      marks:    { ...(remote.marks    || {}) },
+      members:  { ...(remote.members  || {}), ...snapshotMembers },
       locations: {},
       list:      {},
       want:      {},
-      ratings:   {}
+      ratings:   {},
+      actEdits:  { ...(remote.actEdits || {}) }
     };
+    for (const [actId, edit] of Object.entries(snapshotActEdits)) {
+      merged.actEdits[actId] = { ...(merged.actEdits[actId] || {}), ...edit };
+    }
     for (const [name, m] of Object.entries(remote.want || {})) {
       merged.want[name] = { ...(m || {}) };
     }
@@ -1765,6 +1879,9 @@ async function doSave() {
     }
     for (const [k, v] of Object.entries(snapshotWant)) {
       if (pendingWant[k] === v) delete pendingWant[k];
+    }
+    for (const [k, v] of Object.entries(snapshotActEdits)) {
+      if (JSON.stringify(pendingActEdits[k]) === JSON.stringify(v)) delete pendingActEdits[k];
     }
     for (const [k, v] of Object.entries(snapshotRatings)) {
       if (pendingRatings[k] === v) delete pendingRatings[k];
@@ -2099,6 +2216,41 @@ function renderStageView() {
   document.getElementById('stage-view').innerHTML = `<div class="stage-grid">${cols}</div>`;
 }
 
+let editingActId = null;
+
+function openActModal(actId) {
+  editingActId = actId;
+  const act = findActById(actId);
+  if (!act) return;
+  document.getElementById('act-modal-title').textContent = act.name;
+  document.getElementById('act-modal-meta').textContent  = `${act.stage} · ${act.start}–${act.end}`;
+  document.getElementById('act-modal-notes').value = (db.actEdits[actId] || {}).notes || '';
+  document.getElementById('act-modal-overlay').classList.add('open');
+  setTimeout(() => document.getElementById('act-modal-notes').focus(), 50);
+}
+
+function closeActModal(e) {
+  if (e && e.target !== document.getElementById('act-modal-overlay')) return;
+  document.getElementById('act-modal-overlay').classList.remove('open');
+  editingActId = null;
+}
+
+function saveActEdit() {
+  if (!editingActId) return;
+  const notes = document.getElementById('act-modal-notes').value.trim();
+  db.actEdits = db.actEdits || {};
+  db.actEdits[editingActId] = { ...(db.actEdits[editingActId] || {}), notes };
+  pendingActEdits[editingActId] = { notes };
+  document.getElementById('act-modal-overlay').classList.remove('open');
+  editingActId = null;
+  render();
+  saveDB();
+}
+
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') document.getElementById('act-modal-overlay').classList.remove('open');
+});
+
 function avgWant(actId) {
   const scores = Object.values(db.want || {}).map(m => m[actId]).filter(Boolean);
   if (!scores.length) return null;
@@ -2147,10 +2299,17 @@ function renderCard(act) {
     ${retro ? `<span class="act-score retro">WAS <span class="act-score-val">★${retro.toFixed(1)}</span></span>` : ''}
   </div>` : '';
 
+  const notes = (db.actEdits[act.id] || {}).notes;
+  const notesHtml = notes ? `<div class="act-notes">${notes}</div>` : '';
+
   return `<div class="act-card${isMarked?' marked':''}" ${style} onclick="toggleMark('${act.id}')">
-    <div class="act-name">${act.name}</div>
+    <div class="act-name">
+      ${act.name}
+      <button class="act-edit-btn" onclick="event.stopPropagation();openActModal('${act.id}')" title="Add notes">✎</button>
+    </div>
     <div class="act-time">${act.start}–${act.end}</div>
     ${scores}
+    ${notesHtml}
     ${dots ? `<div class="act-dots">${dots}</div>` : ''}
   </div>`;
 }
@@ -2326,10 +2485,12 @@ function renderSummaryView() {
           ? `<span style="color:#FF5C4D;opacity:0.7">${'★'.repeat(retroScore)}${'☆'.repeat(5-retroScore)}</span>`
           : '<span style="opacity:0.3">—</span>';
 
+      const actNote = (db.actEdits[a.id] || {}).notes;
       return `<div class="summary-tag" style="border-color:${rgba(color,0.3)}">
         <span class="s-stage" style="color:${color}">${a.stage}</span>
         ${a.name}
         <span class="s-time">${a.start}–${a.end}</span>
+        ${actNote ? `<div class="act-notes">${actNote}</div>` : ''}
         <div class="act-star-rows">
           <div class="act-stars"><span class="act-star-row-label" style="color:#F59E0B">WANT</span>${wantBtns}</div>
           <div class="act-stars"><span class="act-star-row-label" style="color:#FF5C4D">WAS</span>${retroBtns}</div>
@@ -2848,5 +3009,16 @@ loadDB().then(() => {
 });
 </script>
 
+<div id="act-modal-overlay" onclick="closeActModal(event)">
+  <div id="act-modal">
+    <div id="act-modal-title"></div>
+    <div id="act-modal-meta"></div>
+    <textarea id="act-modal-notes" placeholder="Add notes, tips, friends to meet up with…" maxlength="500"></textarea>
+    <div class="act-modal-actions">
+      <button id="act-modal-cancel" onclick="closeActModal()">Cancel</button>
+      <button id="act-modal-save"   onclick="saveActEdit()">Save</button>
+    </div>
+  </div>
+</div>
 </body>
 </html>

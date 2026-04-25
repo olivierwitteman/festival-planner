@@ -1673,6 +1673,8 @@ async function loadDB() {
     syncUI('offline', 'local mode — see README to enable sync');
     return;
   }
+  if (loadInFlight) return;
+  loadInFlight = true;
   try {
     syncUI('syncing', 'syncing…');
     const r = await fetch(`https://api.jsonbin.io/v3/b/${JSONBIN_BIN_ID}/latest`, {
@@ -1686,6 +1688,8 @@ async function loadDB() {
     syncUI('ok', 'synced');
   } catch {
     syncUI('offline', 'offline');
+  } finally {
+    loadInFlight = false;
   }
 }
 
@@ -1775,6 +1779,7 @@ function applyPending(state) {
 // concurrent edits from other devices aren't clobbered.
 let saveTimer    = null;
 let saveInFlight = false;
+let loadInFlight = false;
 let deferredInstallPrompt = null;
 
 function saveDB() {
@@ -2911,6 +2916,14 @@ function schedulePoll() {
     schedulePoll();
   }, currentPollMs());
 }
+
+// Re-sync immediately when a background tab comes into focus so stale data
+// doesn't linger when the user switches back to the tab.
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'visible' && configured) {
+    loadDB().then(render);
+  }
+});
 
 // ─── INSTALL CTA ──────────────────────────────────────────────────────────────
 window.addEventListener('beforeinstallprompt', e => {

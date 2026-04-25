@@ -1646,7 +1646,7 @@ const DAYS = {
 };
 
 // ─── STATE ────────────────────────────────────────────────────────────────────
-let db         = { marks: {}, members: {}, locations: {}, list: {}, want: {}, ratings: {}, actEdits: {} };
+let db         = { marks: {}, members: {}, locations: {}, list: {}, want: {}, ratings: {}, actEdits: {}, lineup: {} };
 let mapStage   = '';
 let myName     = localStorage.getItem('fp_name')  || '';
 let myColor    = localStorage.getItem('fp_color') || '';
@@ -1743,6 +1743,7 @@ function applyPending(state) {
   if (!state.want)     state.want     = {};
   if (!state.ratings)  state.ratings  = {};
   if (!state.actEdits) state.actEdits = {};
+  if (!state.lineup || !Object.keys(state.lineup).length) state.lineup = JSON.parse(JSON.stringify(DAYS));
   if (myName && myColor) state.members[myName] = myColor;
   if (myName) {
     for (const [actId, toggle] of Object.entries(pendingToggles)) {
@@ -1815,7 +1816,8 @@ async function doSave() {
       list:      {},
       want:      {},
       ratings:   {},
-      actEdits:  { ...(remote.actEdits || {}) }
+      actEdits:  { ...(remote.actEdits || {}) },
+      lineup:    (remote.lineup && Object.keys(remote.lineup).length) ? remote.lineup : JSON.parse(JSON.stringify(DAYS))
     };
     for (const [actId, edit] of Object.entries(snapshotActEdits)) {
       merged.actEdits[actId] = { ...(merged.actEdits[actId] || {}), ...edit };
@@ -2192,7 +2194,7 @@ function renderHomeView() {
 }
 
 function renderStageView() {
-  const day  = DAYS[activeDay];
+  const day  = activeLineup()[activeDay];
   let acts = filterBy === 'all'
     ? day.acts
     : day.acts.filter(a => (db.marks[a.id] || []).includes(filterBy));
@@ -2359,7 +2361,7 @@ const PX_PER_MIN  = 2.5;
 const FLOW_LABEL  = 80;    // px width of sticky stage-name column
 
 function renderFlowView() {
-  const day  = DAYS[activeDay];
+  const day  = activeLineup()[activeDay];
   let acts   = filterBy === 'all'
     ? day.acts
     : day.acts.filter(a => (db.marks[a.id] || []).includes(filterBy));
@@ -2452,7 +2454,7 @@ function renderSummaryView() {
     return;
   }
 
-  const allActs = Object.values(DAYS).flatMap(d => d.acts);
+  const allActs = Object.values(activeLineup()).flatMap(d => d.acts);
 
   const html = members.map(name => {
     const color  = colorOf(name);
@@ -2523,25 +2525,29 @@ function relativeTime(t) {
   return Math.floor(d / (24 * 3_600_000)) + ' d ago';
 }
 
+function activeLineup() {
+  return (db.lineup && Object.keys(db.lineup).length) ? db.lineup : DAYS;
+}
+
 function findActById(actId) {
-  for (const d of Object.values(DAYS)) {
+  for (const d of Object.values(activeLineup())) {
     const a = d.acts.find(x => x.id === actId);
     if (a) return a;
   }
   return null;
 }
 
-const ALL_STAGES = Object.values(DAYS)[0].stages;
+function allStages() { return Object.values(activeLineup())[0].stages; }
 
 function pickDefaultMapStage() {
-  return ALL_STAGES[0] || '';
+  return allStages()[0] || '';
 }
 
 function populateMapStageSelect() {
   const sel = document.getElementById('map-stage-select');
   const prev = mapStage || sel.value;
   sel.innerHTML = '';
-  ALL_STAGES.forEach(s => {
+  allStages().forEach(s => {
     const pinCount = ((db.locations || {})[s]) ? Object.keys(db.locations[s]).length : 0;
     const opt = document.createElement('option');
     opt.value = s;

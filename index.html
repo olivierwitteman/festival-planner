@@ -948,6 +948,25 @@
     cursor: pointer;
   }
   #clear-pin-btn:hover { color: var(--text); border-color: #555; }
+  #share-gps-btn {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 6px 12px;
+    color: var(--muted);
+    font-family: inherit;
+    font-size: 11px;
+    letter-spacing: 1px;
+    cursor: pointer;
+  }
+  #share-gps-btn:hover { color: var(--text); border-color: #555; }
+  #share-gps-btn:disabled { opacity: 0.45; cursor: default; }
+  #gps-status {
+    font-size: 10px;
+    letter-spacing: 1px;
+    color: var(--muted);
+    align-self: center;
+  }
 
   /* ── BRING LIST ──────────────────────────────────────────────── */
   #list-add {
@@ -1182,6 +1201,8 @@
     </div>
     <div id="map-actions">
       <button id="clear-pin-btn" onclick="clearMyLocation()">Clear my pin for this act</button>
+      <button id="share-gps-btn" onclick="shareGPSLocation()">📍 Share my location</button>
+      <span id="gps-status"></span>
     </div>
   </div>
   <div id="list-view"    style="display:none">
@@ -2231,6 +2252,60 @@ function clearMyLocation() {
   saveDB();
 }
 
+
+function shareGPSLocation() {
+  if (!navigator.geolocation) {
+    setGpsStatus('GPS not supported on this device', 3000);
+    return;
+  }
+  const btn = document.getElementById('share-gps-btn');
+  btn.disabled = true;
+  setGpsStatus('Getting location…');
+  navigator.geolocation.getCurrentPosition(
+    async pos => {
+      btn.disabled = false;
+      const { latitude: lat, longitude: lng } = pos.coords;
+      const url = `https://maps.google.com/?q=${lat},${lng}`;
+      const text = myName
+        ? `${myName}'s location at BKS '26 — tap to open in Maps`
+        : `My location at BKS '26 — tap to open in Maps`;
+      if (navigator.share) {
+        try {
+          await navigator.share({ title: 'BKS \'26 location', text, url });
+          setGpsStatus('Shared!', 2500);
+        } catch (e) {
+          if (e.name !== 'AbortError') await copyGpsLink(url);
+        }
+      } else {
+        await copyGpsLink(url);
+      }
+    },
+    err => {
+      btn.disabled = false;
+      const msg = err.code === 1 ? 'Location permission denied'
+                : err.code === 2 ? 'Location unavailable'
+                : 'Location timed out';
+      setGpsStatus(msg, 3500);
+    },
+    { timeout: 10000, maximumAge: 30000 }
+  );
+}
+
+async function copyGpsLink(url) {
+  try {
+    await navigator.clipboard.writeText(url);
+    setGpsStatus('Link copied!', 2500);
+  } catch {
+    setGpsStatus('Could not copy link', 3000);
+  }
+}
+
+function setGpsStatus(msg, clearAfterMs) {
+  const el = document.getElementById('gps-status');
+  if (!el) return;
+  el.textContent = msg;
+  if (clearAfterMs) setTimeout(() => { if (el.textContent === msg) el.textContent = ''; }, clearAfterMs);
+}
 
 // ─── BRING LIST ───────────────────────────────────────────────────────────────
 function newListId() {

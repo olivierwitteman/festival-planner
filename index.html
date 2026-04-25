@@ -358,6 +358,10 @@
   .subscribe-btn:active { transform: translateY(0); opacity: 0.92; }
 
   .summary-stats {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 8px 12px;
     font-size: 10px;
     letter-spacing: 2px;
     color: var(--muted);
@@ -366,6 +370,27 @@
     padding-bottom: 12px;
     border-bottom: 1px solid var(--border);
   }
+
+  /* Slim subscribe pill — used on Summary; the prominent CTA lives on Home. */
+  .subscribe-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    margin-left: auto;
+    background: transparent;
+    border: 1px solid var(--accent);
+    color: var(--accent);
+    border-radius: 20px;
+    padding: 4px 11px;
+    font-family: inherit;
+    font-size: 10px;
+    letter-spacing: 1.5px;
+    font-weight: 700;
+    text-decoration: none;
+    transition: background 0.15s, color 0.15s;
+    white-space: nowrap;
+  }
+  .subscribe-pill:hover { background: rgba(255,92,77,0.15); color: #fff; }
 
   /* ── MOBILE ──────────────────────────────────────────────────── */
   @media (max-width: 480px) {
@@ -1709,19 +1734,29 @@ function subscribeCTA() {
   </div>`;
 }
 
+function subscribePillHTML() {
+  const url = subscribeUrl();
+  return url
+    ? `<a class="subscribe-pill" href="${url}" title="Live calendar feed · refreshes daily">📅 SUBSCRIBE</a>`
+    : '';
+}
+
 function summaryStatsHTML(memberCount, totalPicks) {
-  if (!memberCount) return '';
-  return `<div class="summary-stats">${memberCount} ${memberCount === 1 ? 'person' : 'people'} · ${totalPicks} act${totalPicks === 1 ? '' : 's'} picked</div>`;
+  const pill = subscribePillHTML();
+  if (!memberCount) return pill ? `<div class="summary-stats">${pill}</div>` : '';
+  return `<div class="summary-stats">
+    <span>${memberCount} ${memberCount === 1 ? 'person' : 'people'} · ${totalPicks} act${totalPicks === 1 ? '' : 's'} picked</span>
+    ${pill}
+  </div>`;
 }
 
 function renderSummaryView() {
   const view    = document.getElementById('summary-view');
   const members = [...new Set(Object.values(db.marks).flat())];
-  const cta     = subscribeCTA();
   const stats   = summaryStatsHTML(members.length, Object.keys(db.marks).length);
 
   if (!members.length) {
-    view.innerHTML = cta + '<div class="empty-msg">NO PICKS YET — START MARKING ACTS</div>';
+    view.innerHTML = stats + '<div class="empty-msg">NO PICKS YET — START MARKING ACTS</div>';
     return;
   }
 
@@ -1752,7 +1787,7 @@ function renderSummaryView() {
     </div>`;
   }).join('');
 
-  view.innerHTML = cta + stats + html;
+  view.innerHTML = stats + html;
 }
 
 

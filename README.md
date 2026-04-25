@@ -44,6 +44,7 @@ Send `https://yourusername.github.io/festival-planner` to your group. Everyone:
 
 ## 🎨 Features
 
+- **Home overview** — onboarding landing page with feature cards, group activity stats, and a calendar subscribe CTA
 - **3 days** — Friday, Saturday, Sunday with full lineup
 - **Per-person colors** — each group member gets a distinct color dot
 - **Stage view** — acts grouped by stage

@@ -519,7 +519,7 @@
 
   .home-features {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
     gap: 10px;
   }
   .home-feature {
@@ -1127,9 +1127,7 @@
   <div id="home-view" style="display:none">
     <div class="home-hero">
       <div class="home-hero-title">PLAN BKS '26 TOGETHER</div>
-      <div class="home-hero-sub">
-        Mark acts, find each other on-site, share what to pack, sync to your calendar — all live with the group.
-      </div>
+      <div class="home-hero-sub">Live group planning — acts, map, packing list.</div>
       <div class="countdown-heading" id="countdown-heading">Kicks off in</div>
       <div id="countdown" class="countdown"></div>
       <div class="home-hero-prompt" id="home-hero-prompt"></div>
@@ -1144,37 +1142,28 @@
       <button class="home-feature" onclick="setView('stage')">
         <div class="home-feature-icon">🎤</div>
         <div class="home-feature-title">Stage</div>
-        <div class="home-feature-desc">Browse the timetable by stage and tap acts to mark them. Filter by friend to see only their picks.</div>
-        <div class="home-feature-cta">Open Stage →</div>
+        <div class="home-feature-desc">Tap acts to mark them. Filter by friend.</div>
+      </button>
+      <button class="home-feature" onclick="setView('flow')">
+        <div class="home-feature-icon">🗓️</div>
+        <div class="home-feature-title">Flow</div>
+        <div class="home-feature-desc">Your picks as a Gantt timeline. Spot clashes at a glance.</div>
       </button>
       <button class="home-feature" onclick="setView('summary')">
         <div class="home-feature-icon">📋</div>
         <div class="home-feature-title">Summary</div>
-        <div class="home-feature-desc">Each person's full schedule on one page. Subscribe to a live calendar feed of everyone's picks.</div>
-        <div class="home-feature-cta">Open Summary →</div>
+        <div class="home-feature-desc">Everyone's schedule on one page. Subscribe to a live calendar.</div>
       </button>
       <button class="home-feature" onclick="setView('map')">
         <div class="home-feature-icon">📍</div>
         <div class="home-feature-title">Map</div>
-        <div class="home-feature-desc">Drop a pin per act so the group can find each other on-site. Updates within seconds during the festival.</div>
-        <div class="home-feature-cta">Open Map →</div>
+        <div class="home-feature-desc">Drop a pin so the group can find you on-site.</div>
       </button>
       <button class="home-feature" onclick="setView('list')">
         <div class="home-feature-icon">🛍️</div>
         <div class="home-feature-title">Bring</div>
-        <div class="home-feature-desc">Shared packing list. Add what the group needs and claim what you'll bring yourself.</div>
-        <div class="home-feature-cta">Open Bring →</div>
+        <div class="home-feature-desc">Shared packing list — claim what you'll bring.</div>
       </button>
-    </div>
-
-    <div class="home-steps">
-      <div class="home-steps-title">HOW IT WORKS</div>
-      <ol>
-        <li>Type your name in the bar above and tap <strong>Join</strong> — you'll get a unique color the group will recognise.</li>
-        <li>On <strong>Stage</strong>, tap acts you want to see. Friends see your picks within seconds.</li>
-        <li>During the festival, drop pins in <strong>Map</strong> and add to the <strong>Bring</strong> list.</li>
-        <li>Hit <strong>Subscribe</strong> in Summary to get a live calendar feed of everyone's plans.</li>
-      </ol>
     </div>
   </div>
   <div id="stage-view"   style="display:none"></div>

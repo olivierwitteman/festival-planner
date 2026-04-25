@@ -659,6 +659,58 @@
     padding: 10px 0 4px;
   }
 
+  .install-cta {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    background: var(--surface);
+    border: 1px solid rgba(255,92,77,0.3);
+    border-radius: 10px;
+    padding: 12px 14px;
+  }
+  .install-cta-icon { font-size: 22px; flex-shrink: 0; line-height: 1; }
+  .install-cta-body { flex: 1; min-width: 0; }
+  .install-cta-title {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 14px;
+    letter-spacing: 2px;
+    color: #fff;
+    line-height: 1;
+  }
+  .install-cta-desc {
+    font-size: 11px;
+    color: var(--muted);
+    margin-top: 3px;
+    line-height: 1.45;
+  }
+  .install-cta-desc strong { color: var(--text); font-weight: 700; }
+  .install-cta-btn {
+    background: var(--accent);
+    color: #fff;
+    border: none;
+    border-radius: 6px;
+    padding: 7px 13px;
+    font-family: inherit;
+    font-size: 11px;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    cursor: pointer;
+    flex-shrink: 0;
+    transition: opacity 0.15s;
+  }
+  .install-cta-btn:hover { opacity: 0.8; }
+  .install-cta-dismiss {
+    background: none;
+    border: none;
+    color: var(--muted);
+    cursor: pointer;
+    font-size: 15px;
+    padding: 2px 4px;
+    flex-shrink: 0;
+    line-height: 1;
+  }
+  .install-cta-dismiss:hover { color: var(--text); }
+
   /* ── MAP VIEW (per-act) ──────────────────────────────────────── */
   #map-help {
     font-size: 11px;
@@ -989,6 +1041,7 @@
     <div class="home-stats" id="home-stats"></div>
 
     <div id="home-subscribe"></div>
+    <div id="home-install"></div>
 
     <div class="home-features">
       <button class="home-feature" onclick="setView('stage')">
@@ -1728,6 +1781,7 @@ function renderHomeView() {
   }
 
   document.getElementById('home-subscribe').innerHTML = subscribeCTA();
+  renderInstallCTA();
 }
 
 function renderStageView() {
@@ -2158,6 +2212,74 @@ function schedulePoll() {
     render();
     schedulePoll();
   }, currentPollMs());
+}
+
+// ─── INSTALL CTA ──────────────────────────────────────────────────────────────
+let deferredInstallPrompt = null;
+
+window.addEventListener('beforeinstallprompt', e => {
+  e.preventDefault();
+  deferredInstallPrompt = e;
+  renderInstallCTA();
+});
+
+window.addEventListener('appinstalled', () => {
+  deferredInstallPrompt = null;
+  localStorage.setItem('fp_installed', '1');
+  renderInstallCTA();
+});
+
+function isIosSafari() {
+  const ua = navigator.userAgent;
+  return /iP(hone|ad|od)/.test(ua) && /WebKit/.test(ua) && !/CriOS|FxiOS|EdgiOS/.test(ua);
+}
+
+function renderInstallCTA() {
+  const el = document.getElementById('home-install');
+  if (!el) return;
+  const standalone = window.matchMedia('(display-mode: standalone)').matches || navigator.standalone;
+  if (standalone || localStorage.getItem('fp_installed') || localStorage.getItem('fp_install_dismissed')) {
+    el.innerHTML = '';
+    return;
+  }
+  if (deferredInstallPrompt) {
+    el.innerHTML = `<div class="install-cta">
+      <div class="install-cta-icon">📲</div>
+      <div class="install-cta-body">
+        <div class="install-cta-title">Add to home screen</div>
+        <div class="install-cta-desc">Install for quick access — no app store needed.</div>
+      </div>
+      <button class="install-cta-btn" onclick="triggerInstall()">Install</button>
+      <button class="install-cta-dismiss" onclick="dismissInstall()" aria-label="Dismiss">✕</button>
+    </div>`;
+    return;
+  }
+  if (isIosSafari()) {
+    el.innerHTML = `<div class="install-cta">
+      <div class="install-cta-icon">📲</div>
+      <div class="install-cta-body">
+        <div class="install-cta-title">Add to home screen</div>
+        <div class="install-cta-desc">Tap <strong>Share ↑</strong> then <strong>Add to Home Screen</strong>.</div>
+      </div>
+      <button class="install-cta-dismiss" onclick="dismissInstall()" aria-label="Dismiss">✕</button>
+    </div>`;
+    return;
+  }
+  el.innerHTML = '';
+}
+
+async function triggerInstall() {
+  if (!deferredInstallPrompt) return;
+  deferredInstallPrompt.prompt();
+  const { outcome } = await deferredInstallPrompt.userChoice;
+  deferredInstallPrompt = null;
+  if (outcome === 'accepted') localStorage.setItem('fp_installed', '1');
+  renderInstallCTA();
+}
+
+function dismissInstall() {
+  localStorage.setItem('fp_install_dismissed', '1');
+  renderInstallCTA();
 }
 
 function updateCountdown() {

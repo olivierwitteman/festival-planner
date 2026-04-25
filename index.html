@@ -827,9 +827,9 @@
     color: var(--muted);
     text-transform: uppercase;
   }
-  #map-act-select {
+  #map-stage-select {
     flex: 1;
-    min-width: 200px;
+    min-width: 160px;
     background: var(--surface2);
     border: 1px solid var(--border);
     border-radius: 6px;
@@ -839,14 +839,7 @@
     font-size: 12px;
     outline: none;
   }
-  #map-act-select:focus { border-color: var(--accent); }
-  #map-act-time {
-    font-size: 10px;
-    letter-spacing: 1px;
-    color: var(--muted);
-    text-transform: uppercase;
-    width: 100%;
-  }
+  #map-stage-select:focus { border-color: var(--accent); }
   #map-canvas {
     position: relative;
     background:
@@ -948,6 +941,25 @@
     cursor: pointer;
   }
   #clear-pin-btn:hover { color: var(--text); border-color: #555; }
+  #share-map-btn {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 6px 12px;
+    color: var(--muted);
+    font-family: inherit;
+    font-size: 11px;
+    letter-spacing: 1px;
+    cursor: pointer;
+  }
+  #share-map-btn:hover { color: var(--text); border-color: #555; }
+  #share-map-btn:disabled { opacity: 0.45; cursor: default; }
+  #map-share-status {
+    font-size: 10px;
+    letter-spacing: 1px;
+    color: var(--muted);
+    align-self: center;
+  }
 
   /* ── BRING LIST ──────────────────────────────────────────────── */
   #list-add {
@@ -1065,6 +1077,36 @@
   .list-claim-btn:hover  { color: var(--text); border-color: #555; }
   .list-claim-btn.active { color: #fff; border-color: #3CB44B; background: rgba(60,180,75,0.18); }
 
+  .list-priority-section {
+    font-size: 9px;
+    letter-spacing: 2px;
+    color: var(--muted);
+    text-transform: uppercase;
+    padding: 10px 0 4px;
+    margin-top: 4px;
+    border-top: 1px solid var(--border);
+  }
+  .list-priority-section:first-child { border-top: none; margin-top: 0; padding-top: 0; }
+
+  .list-priority-badge {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 12px;
+    letter-spacing: 1px;
+    border-radius: 4px;
+    border: 1.5px solid;
+    padding: 1px 6px;
+    cursor: pointer;
+    background: none;
+    line-height: 1.5;
+    flex-shrink: 0;
+    transition: opacity 0.15s;
+  }
+  .list-priority-badge:hover { opacity: 0.7; }
+  .list-priority-badge.M { color: #FF5C4D; border-color: #FF5C4D; }
+  .list-priority-badge.S { color: #F59E0B; border-color: #F59E0B; }
+  .list-priority-badge.C { color: #38BDF8; border-color: #38BDF8; }
+  .list-priority-badge.W { color: var(--muted); border-color: #333; }
+
   #list-empty {
     color: #333;
     padding: 32px 0;
@@ -1172,9 +1214,8 @@
   <div id="map-view"     style="display:none">
     <div id="map-help"></div>
     <div id="map-act-bar">
-      <span class="map-act-label">ACT</span>
-      <select id="map-act-select" onchange="onMapActChange(this.value)"></select>
-      <span id="map-act-time"></span>
+      <span class="map-act-label">STAGE</span>
+      <select id="map-stage-select" onchange="onMapStageChange(this.value)"></select>
     </div>
     <div id="map-canvas">
       <div class="map-orientation">↑ STAGE / FRONT</div>
@@ -1182,6 +1223,8 @@
     </div>
     <div id="map-actions">
       <button id="clear-pin-btn" onclick="clearMyLocation()">Clear my pin for this act</button>
+      <button id="share-map-btn" onclick="shareMapLink()">🔗 Share map link</button>
+      <span id="map-share-status"></span>
     </div>
   </div>
   <div id="list-view"    style="display:none">
@@ -1400,7 +1443,7 @@ const DAYS = {
 
 // ─── STATE ────────────────────────────────────────────────────────────────────
 let db         = { marks: {}, members: {}, locations: {}, list: {} };
-let mapActId   = '';
+let mapStage   = '';
 let myName     = localStorage.getItem('fp_name')  || '';
 let myColor    = localStorage.getItem('fp_color') || '';
 let activeDay  = 'friday';
@@ -1450,8 +1493,9 @@ let pendingToggles = {};
 //   { actId, x, y, t } or { actId, clear: true, t }.
 let pendingLocation = null;
 // Pending bring-list operations to replay onto the merged state on save.
-// Each op: { type:'add', id, text, addedBy, addedAt }
+// Each op: { type:'add', id, text, addedBy, addedAt, priority }
 //        | { type:'claim', id, name, want:bool }
+//        | { type:'priority', id, priority:'M'|'S'|'C'|'W' }
 //        | { type:'remove', id }
 let pendingListOps = [];
 
@@ -1463,6 +1507,7 @@ function applyListOp(state, op) {
         text:      op.text,
         addedBy:   op.addedBy,
         addedAt:   op.addedAt,
+        priority:  op.priority || 'S',
         claimedBy: []
       };
     }
@@ -1472,6 +1517,9 @@ function applyListOp(state, op) {
     const claimers = (item.claimedBy || []).filter(n => n !== op.name);
     if (op.want) claimers.push(op.name);
     item.claimedBy = claimers;
+  } else if (op.type === 'priority') {
+    const item = state.list[op.id];
+    if (item) item.priority = op.priority;
   } else if (op.type === 'remove') {
     delete state.list[op.id];
   }
@@ -1489,12 +1537,12 @@ function applyPending(state) {
       if (want) list.push(myName);
       if (list.length) state.marks[actId] = list; else delete state.marks[actId];
     }
-    if (pendingLocation && pendingLocation.actId) {
-      const aid = pendingLocation.actId;
-      state.locations[aid] = state.locations[aid] || {};
-      if (pendingLocation.clear) delete state.locations[aid][myName];
-      else state.locations[aid][myName] = { x: pendingLocation.x, y: pendingLocation.y, t: pendingLocation.t };
-      if (Object.keys(state.locations[aid]).length === 0) delete state.locations[aid];
+    if (pendingLocation && pendingLocation.stage) {
+      const stg = pendingLocation.stage;
+      state.locations[stg] = state.locations[stg] || {};
+      if (pendingLocation.clear) delete state.locations[stg][myName];
+      else state.locations[stg][myName] = { x: pendingLocation.x, y: pendingLocation.y, t: pendingLocation.t };
+      if (Object.keys(state.locations[stg]).length === 0) delete state.locations[stg];
     }
   }
   for (const op of pendingListOps) applyListOp(state, op);
@@ -1553,19 +1601,19 @@ async function doSave() {
       if (want) list.push(myName);
       if (list.length) merged.marks[actId] = list; else delete merged.marks[actId];
     }
-    if (snapshotLocation && snapshotLocation.actId && myName) {
-      const aid = snapshotLocation.actId;
-      merged.locations[aid] = merged.locations[aid] || {};
+    if (snapshotLocation && snapshotLocation.stage && myName) {
+      const stg = snapshotLocation.stage;
+      merged.locations[stg] = merged.locations[stg] || {};
       if (snapshotLocation.clear) {
-        delete merged.locations[aid][myName];
+        delete merged.locations[stg][myName];
       } else {
         // Last-write-wins by timestamp; only overwrite if our snapshot is newer.
-        const remoteLoc = merged.locations[aid][myName];
+        const remoteLoc = merged.locations[stg][myName];
         if (!remoteLoc || (snapshotLocation.t || 0) >= (remoteLoc.t || 0)) {
-          merged.locations[aid][myName] = { x: snapshotLocation.x, y: snapshotLocation.y, t: snapshotLocation.t };
+          merged.locations[stg][myName] = { x: snapshotLocation.x, y: snapshotLocation.y, t: snapshotLocation.t };
         }
       }
-      if (Object.keys(merged.locations[aid]).length === 0) delete merged.locations[aid];
+      if (Object.keys(merged.locations[stg]).length === 0) delete merged.locations[stg];
     }
     // Replay our queued list operations onto the freshly-fetched state.
     for (const op of snapshotListOps) applyListOp(merged, op);
@@ -2101,69 +2149,59 @@ function findActById(actId) {
   return null;
 }
 
-function pickDefaultMapAct() {
-  // Prefer the first act on the day tab the user is currently viewing.
-  const today = (DAYS[activeDay] && DAYS[activeDay].acts) || [];
-  return today[0] ? today[0].id : '';
+const ALL_STAGES = Object.values(DAYS)[0].stages;
+
+function pickDefaultMapStage() {
+  return ALL_STAGES[0] || '';
 }
 
-function populateMapActSelect() {
-  const sel = document.getElementById('map-act-select');
-  const prev = mapActId || sel.value;
+function populateMapStageSelect() {
+  const sel = document.getElementById('map-stage-select');
+  const prev = mapStage || sel.value;
   sel.innerHTML = '';
-  Object.entries(DAYS).forEach(([key, d]) => {
-    const og = document.createElement('optgroup');
-    og.label = d.label;
-    d.acts.forEach(a => {
-      const pinCount = ((db.locations || {})[a.id]) ? Object.keys(db.locations[a.id]).length : 0;
-      const opt = document.createElement('option');
-      opt.value = a.id;
-      opt.textContent = `${a.start} · ${a.stage} · ${a.name}` + (pinCount ? `  · ${pinCount} 📍` : '');
-      og.appendChild(opt);
-    });
-    sel.appendChild(og);
+  ALL_STAGES.forEach(s => {
+    const pinCount = ((db.locations || {})[s]) ? Object.keys(db.locations[s]).length : 0;
+    const opt = document.createElement('option');
+    opt.value = s;
+    opt.textContent = s + (pinCount ? `  · ${pinCount} 📍` : '');
+    sel.appendChild(opt);
   });
   if (prev && sel.querySelector(`option[value="${CSS.escape(prev)}"]`)) {
     sel.value = prev;
-    mapActId = prev;
+    mapStage = prev;
   } else {
-    mapActId = pickDefaultMapAct();
-    if (mapActId) sel.value = mapActId;
+    mapStage = pickDefaultMapStage();
+    if (mapStage) sel.value = mapStage;
   }
 }
 
-function onMapActChange(actId) {
-  mapActId = actId;
+function onMapStageChange(stage) {
+  mapStage = stage;
   renderMapView();
 }
 
 function renderMapView() {
-  populateMapActSelect();
+  populateMapStageSelect();
   const canvas = document.getElementById('map-canvas');
   canvas.querySelectorAll('.map-pin').forEach(p => p.remove());
 
-  const help      = document.getElementById('map-help');
-  const empty     = document.getElementById('map-empty');
-  const timeLabel = document.getElementById('map-act-time');
-  const clearBtn  = document.getElementById('clear-pin-btn');
+  const help     = document.getElementById('map-help');
+  const empty    = document.getElementById('map-empty');
+  const clearBtn = document.getElementById('clear-pin-btn');
 
-  const act = mapActId ? findActById(mapActId) : null;
-  if (!act) {
-    help.textContent = 'No act selected.';
+  if (!mapStage) {
+    help.textContent = 'No stage selected.';
     empty.style.display = 'flex';
-    timeLabel.textContent = '';
     clearBtn.style.display = 'none';
     return;
   }
 
-  timeLabel.textContent = `${act.start}–${act.end} · ${act.stage}`;
-
-  const locsForAct = (db.locations && db.locations[mapActId]) || {};
-  const names = Object.keys(locsForAct);
+  const locsForStage = (db.locations && db.locations[mapStage]) || {};
+  const names = Object.keys(locsForStage);
   empty.style.display = names.length ? 'none' : 'flex';
 
   names.forEach(name => {
-    const loc = locsForAct[name];
+    const loc = locsForStage[name];
     if (!loc || typeof loc.x !== 'number' || typeof loc.y !== 'number') return;
     const color = colorOf(name);
     const stale = loc.t && (Date.now() - loc.t > STALE_PIN_MS);
@@ -2193,9 +2231,9 @@ function renderMapView() {
   });
 
   help.textContent = myName
-    ? `📍 Tap anywhere to drop your pin near "${act.name}". Others see it within seconds.`
+    ? `📍 Tap anywhere on the map to drop your pin at ${mapStage}. Others see it within seconds.`
     : '📍 Join with a name first to drop a pin.';
-  clearBtn.style.display = (myName && locsForAct[myName]) ? 'inline-block' : 'none';
+  clearBtn.style.display = (myName && locsForStage[myName]) ? 'inline-block' : 'none';
 }
 
 function setMyLocation(e) {
@@ -2204,8 +2242,8 @@ function setMyLocation(e) {
     document.getElementById('name-input').focus();
     return;
   }
-  if (!mapActId) return;
-  if (e.target.closest('.map-pin')) return;            // ignore taps on existing pins
+  if (!mapStage) return;
+  if (e.target.closest('.map-pin')) return;
   const canvas = document.getElementById('map-canvas');
   const rect   = canvas.getBoundingClientRect();
   const x = (e.clientX - rect.left) / rect.width;
@@ -2213,24 +2251,57 @@ function setMyLocation(e) {
   if (x < 0 || x > 1 || y < 0 || y > 1) return;
   const t = Date.now();
   db.locations = db.locations || {};
-  db.locations[mapActId] = db.locations[mapActId] || {};
-  db.locations[mapActId][myName] = { x, y, t };
-  pendingLocation = { actId: mapActId, x, y, t };
+  db.locations[mapStage] = db.locations[mapStage] || {};
+  db.locations[mapStage][myName] = { x, y, t };
+  pendingLocation = { stage: mapStage, x, y, t };
   renderMapView();
   saveDB();
 }
 
 function clearMyLocation() {
-  if (!myName || !mapActId) return;
-  if (db.locations && db.locations[mapActId]) {
-    delete db.locations[mapActId][myName];
-    if (Object.keys(db.locations[mapActId]).length === 0) delete db.locations[mapActId];
+  if (!myName || !mapStage) return;
+  if (db.locations && db.locations[mapStage]) {
+    delete db.locations[mapStage][myName];
+    if (Object.keys(db.locations[mapStage]).length === 0) delete db.locations[mapStage];
   }
-  pendingLocation = { actId: mapActId, clear: true, t: Date.now() };
+  pendingLocation = { stage: mapStage, clear: true, t: Date.now() };
   renderMapView();
   saveDB();
 }
 
+
+async function shareMapLink() {
+  const url = location.origin + location.pathname + '#map';
+  const text = myName
+    ? `Join ${myName} on the BKS '26 planner map`
+    : 'Open the BKS \'26 planner map';
+  if (navigator.share) {
+    try {
+      await navigator.share({ title: 'BKS \'26 Map', text, url });
+      setMapShareStatus('Shared!', 2500);
+    } catch (e) {
+      if (e.name !== 'AbortError') await copyMapLink(url);
+    }
+  } else {
+    await copyMapLink(url);
+  }
+}
+
+async function copyMapLink(url) {
+  try {
+    await navigator.clipboard.writeText(url);
+    setMapShareStatus('Link copied!', 2500);
+  } catch {
+    setMapShareStatus('Could not copy link', 3000);
+  }
+}
+
+function setMapShareStatus(msg, clearAfterMs) {
+  const el = document.getElementById('map-share-status');
+  if (!el) return;
+  el.textContent = msg;
+  if (clearAfterMs) setTimeout(() => { if (el.textContent === msg) el.textContent = ''; }, clearAfterMs);
+}
 
 // ─── BRING LIST ───────────────────────────────────────────────────────────────
 function newListId() {
@@ -2247,11 +2318,12 @@ function addListItem() {
   const text  = input.value.trim();
   if (!text) return;
   const op = {
-    type:    'add',
-    id:      newListId(),
+    type:     'add',
+    id:       newListId(),
     text,
-    addedBy: myName,
-    addedAt: Date.now()
+    addedBy:  myName,
+    addedAt:  Date.now(),
+    priority: 'S'
   };
   pendingListOps.push(op);
   applyListOp(db, op);
@@ -2284,17 +2356,47 @@ function removeListItem(id) {
   saveDB();
 }
 
+const PRIORITY_ORDER = ['M', 'S', 'C', 'W'];
+const PRIORITY_LABEL = { M: 'Must Have', S: 'Should Have', C: 'Could Have', W: "Won't Have" };
+const PRIORITY_CYCLE = { M: 'S', S: 'C', C: 'W', W: 'M' };
+
+function setListPriority(id) {
+  const item = (db.list || {})[id];
+  if (!item) return;
+  const next = PRIORITY_CYCLE[item.priority || 'S'];
+  const op = { type: 'priority', id, priority: next };
+  pendingListOps.push(op);
+  applyListOp(db, op);
+  renderListView();
+  saveDB();
+}
+
 function renderListView() {
   const container = document.getElementById('list-items');
   const empty     = document.getElementById('list-empty');
   const items = Object.entries(db.list || {})
     .filter(([, it]) => it && typeof it.text === 'string')
-    .sort((a, b) => (a[1].addedAt || 0) - (b[1].addedAt || 0));
+    .sort((a, b) => {
+      const pa = PRIORITY_ORDER.indexOf(a[1].priority || 'S');
+      const pb = PRIORITY_ORDER.indexOf(b[1].priority || 'S');
+      return pa !== pb ? pa - pb : (a[1].addedAt || 0) - (b[1].addedAt || 0);
+    });
 
   empty.style.display = items.length ? 'none' : 'block';
   container.innerHTML = '';
 
+  let lastPriority = null;
   items.forEach(([id, item]) => {
+    const p = item.priority || 'S';
+
+    if (p !== lastPriority) {
+      const section = document.createElement('div');
+      section.className = 'list-priority-section';
+      section.textContent = PRIORITY_LABEL[p];
+      container.appendChild(section);
+      lastPriority = p;
+    }
+
     const claimers = item.claimedBy || [];
     const mineClaimed = myName && claimers.includes(myName);
 
@@ -2303,6 +2405,14 @@ function renderListView() {
 
     const top = document.createElement('div');
     top.className = 'list-item-top';
+
+    const badge = document.createElement('button');
+    badge.className = `list-priority-badge ${p}`;
+    badge.textContent = p;
+    badge.title = `Priority: ${PRIORITY_LABEL[p]} — click to change`;
+    badge.onclick = () => setListPriority(id);
+    top.appendChild(badge);
+
     const text = document.createElement('span');
     text.className = 'list-item-text';
     text.textContent = item.text;
@@ -2371,6 +2481,9 @@ document.getElementById('list-input').addEventListener('keydown', e => {
 });
 
 if (myName) updateUserBar();
+
+// Hash deep-link: ?#map opens the map directly (used by the share link).
+if (location.hash === '#map') activeView = 'map';
 
 // Sync the tab highlight to the persisted view (HTML hard-codes Home as active).
 setView(activeView);

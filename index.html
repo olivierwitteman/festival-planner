@@ -1295,6 +1295,7 @@ async function loadDB() {
     const remote = (await r.json()).record || { marks:{}, members:{}, locations:{}, list:{} };
     db = remote;
     applyPending(db);
+    repairMyColor();
     syncUI('ok', 'synced');
   } catch {
     syncUI('offline', 'offline');
@@ -1381,7 +1382,7 @@ async function doSave() {
   }
   saveInFlight = true;
   const snapshotPending  = { ...pendingToggles };
-  const snapshotMembers  = { ...db.members };
+  const snapshotMembers  = myName ? { [myName]: db.members[myName] } : {};
   const snapshotLocation = pendingLocation;
   const snapshotListOps  = pendingListOps.slice();
   try {
@@ -1459,10 +1460,45 @@ async function doSave() {
 }
 
 // ─── USER ─────────────────────────────────────────────────────────────────────
+
+// Returns a deterministic palette index based on a name string so two people
+// healing duplicate colors simultaneously tend to land on different colors.
+function nameHash(name) {
+  return Math.abs(name.split('').reduce((h, c) => (h * 31 + c.charCodeAt(0)) | 0, 0));
+}
+
 function pickNewColor() {
-  const used = new Set(Object.values(db.members));
-  return PALETTE.find(c => !used.has(c))
-      || PALETTE[Object.keys(db.members).length % PALETTE.length];
+  const used = new Set(Object.values(db.members).filter(c => c !== db.members[myName]));
+  const start = myName ? nameHash(myName) % PALETTE.length : 0;
+  for (let i = 0; i < PALETTE.length; i++) {
+    const c = PALETTE[(start + i) % PALETTE.length];
+    if (!used.has(c)) return c;
+  }
+  return PALETTE[start];
+}
+
+// If our stored color is the same as another member's, assign a new unique one
+// and trigger a save so the fix propagates. Runs after every remote load.
+function repairMyColor() {
+  if (!myName || !db.members) return;
+  const myStored = db.members[myName];
+  if (!myStored) return;
+  const othersColors = Object.entries(db.members)
+    .filter(([n]) => n !== myName)
+    .map(([, c]) => c);
+  if (!othersColors.includes(myStored)) return;
+
+  const used  = new Set(othersColors);
+  const start = nameHash(myName) % PALETTE.length;
+  let newColor = PALETTE[start];
+  for (let i = 0; i < PALETTE.length; i++) {
+    const c = PALETTE[(start + i) % PALETTE.length];
+    if (!used.has(c)) { newColor = c; break; }
+  }
+  db.members[myName] = newColor;
+  myColor = newColor;
+  localStorage.setItem('fp_color', newColor);
+  saveDB();
 }
 
 function joinFestival() {

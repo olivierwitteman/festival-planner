@@ -1077,6 +1077,28 @@
   .list-claim-btn:hover  { color: var(--text); border-color: #555; }
   .list-claim-btn.active { color: #fff; border-color: #3CB44B; background: rgba(60,180,75,0.18); }
 
+  .act-priority-badge {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 11px;
+    letter-spacing: 1px;
+    border-radius: 3px;
+    border: 1.5px solid;
+    padding: 0px 4px;
+    cursor: pointer;
+    background: none;
+    line-height: 1.4;
+    vertical-align: middle;
+    transition: opacity 0.15s;
+    display: inline-block;
+    margin-left: 4px;
+    flex-shrink: 0;
+  }
+  .act-priority-badge:hover { opacity: 0.65; }
+  .act-priority-badge.M { color: #FF5C4D; border-color: #FF5C4D; }
+  .act-priority-badge.S { color: #F59E0B; border-color: #F59E0B; }
+  .act-priority-badge.C { color: #38BDF8; border-color: #38BDF8; }
+  .act-priority-badge.W { color: var(--muted); border-color: #333; }
+
   .list-priority-section {
     font-size: 9px;
     letter-spacing: 2px;
@@ -1442,7 +1464,7 @@ const DAYS = {
 };
 
 // ─── STATE ────────────────────────────────────────────────────────────────────
-let db         = { marks: {}, members: {}, locations: {}, list: {} };
+let db         = { marks: {}, members: {}, locations: {}, list: {}, priorities: {} };
 let mapStage   = '';
 let myName     = localStorage.getItem('fp_name')  || '';
 let myColor    = localStorage.getItem('fp_color') || '';
@@ -1489,6 +1511,8 @@ async function loadDB() {
 // server yet. Keyed by act id, value is the desired marked state for myName.
 // Re-applied after every load so a poll can't wipe an unsaved click.
 let pendingToggles = {};
+// Pending priority changes: { [actId]: 'M'|'S'|'C'|'W' }
+let pendingPriorities = {};
 // Pending pin placement scoped to a specific act:
 //   { actId, x, y, t } or { actId, clear: true, t }.
 let pendingLocation = null;
@@ -1526,16 +1550,20 @@ function applyListOp(state, op) {
 }
 
 function applyPending(state) {
-  if (!state.marks)     state.marks     = {};
-  if (!state.members)   state.members   = {};
-  if (!state.locations) state.locations = {};
-  if (!state.list)      state.list      = {};
+  if (!state.marks)      state.marks      = {};
+  if (!state.members)    state.members    = {};
+  if (!state.locations)  state.locations  = {};
+  if (!state.list)       state.list       = {};
+  if (!state.priorities) state.priorities = {};
   if (myName && myColor) state.members[myName] = myColor;
   if (myName) {
     for (const [actId, want] of Object.entries(pendingToggles)) {
       const list = (state.marks[actId] || []).filter(n => n !== myName);
       if (want) list.push(myName);
       if (list.length) state.marks[actId] = list; else delete state.marks[actId];
+    }
+    if (Object.keys(pendingPriorities).length) {
+      state.priorities[myName] = { ...(state.priorities[myName] || {}), ...pendingPriorities };
     }
     if (pendingLocation && pendingLocation.stage) {
       const stg = pendingLocation.stage;
@@ -1570,25 +1598,33 @@ async function doSave() {
     return;
   }
   saveInFlight = true;
-  const snapshotPending  = { ...pendingToggles };
-  const snapshotMembers  = myName ? { [myName]: db.members[myName] } : {};
-  const snapshotLocation = pendingLocation;
-  const snapshotListOps  = pendingListOps.slice();
+  const snapshotPending    = { ...pendingToggles };
+  const snapshotPriorities = { ...pendingPriorities };
+  const snapshotMembers    = myName ? { [myName]: db.members[myName] } : {};
+  const snapshotLocation   = pendingLocation;
+  const snapshotListOps    = pendingListOps.slice();
   try {
     // 1. Fetch fresh remote so we don't trample other devices' writes.
     const fr = await fetch(`https://api.jsonbin.io/v3/b/${JSONBIN_BIN_ID}/latest`, {
       headers: { 'X-Access-Key': JSONBIN_API_KEY }
     });
     if (!fr.ok) throw new Error('load: ' + fr.status);
-    const remote = (await fr.json()).record || { marks:{}, members:{}, locations:{}, list:{} };
+    const remote = (await fr.json()).record || { marks:{}, members:{}, locations:{}, list:{}, priorities:{} };
 
     // 2. Merge: keep everyone else's marks / pins / items, overlay our pending edits.
     const merged = {
-      marks:     { ...(remote.marks   || {}) },
-      members:   { ...(remote.members || {}), ...snapshotMembers },
-      locations: {},
-      list:      {}
+      marks:      { ...(remote.marks   || {}) },
+      members:    { ...(remote.members || {}), ...snapshotMembers },
+      locations:  {},
+      list:       {},
+      priorities: {}
     };
+    for (const [name, prioMap] of Object.entries(remote.priorities || {})) {
+      merged.priorities[name] = { ...(prioMap || {}) };
+    }
+    if (myName && Object.keys(snapshotPriorities).length) {
+      merged.priorities[myName] = { ...(merged.priorities[myName] || {}), ...snapshotPriorities };
+    }
     for (const [aid, byName] of Object.entries(remote.locations || {})) {
       merged.locations[aid] = { ...byName };
     }
@@ -1633,6 +1669,9 @@ async function doSave() {
     applyPending(db);
     for (const [k, v] of Object.entries(snapshotPending)) {
       if (pendingToggles[k] === v) delete pendingToggles[k];
+    }
+    for (const [k, v] of Object.entries(snapshotPriorities)) {
+      if (pendingPriorities[k] === v) delete pendingPriorities[k];
     }
     if (pendingLocation === snapshotLocation) pendingLocation = null;
     // Drop list ops we just persisted; any added during the save remain queued.
@@ -1732,6 +1771,7 @@ function joinAs(name) {
 function leaveSession() {
   myName = ''; myColor = '';
   pendingToggles = {};
+  pendingPriorities = {};
   localStorage.removeItem('fp_name');
   localStorage.removeItem('fp_color');
   updateUserBar();
@@ -1789,8 +1829,29 @@ function toggleMark(actId) {
   const isMarked = (db.marks[actId] || []).includes(myName);
   pendingToggles[actId] = !isMarked;
   const list = (db.marks[actId] || []).filter(n => n !== myName);
-  if (!isMarked) list.push(myName);
+  if (!isMarked) {
+    list.push(myName);
+    if (!((db.priorities || {})[myName] || {})[actId]) {
+      db.priorities = db.priorities || {};
+      db.priorities[myName] = db.priorities[myName] || {};
+      db.priorities[myName][actId] = 'S';
+      pendingPriorities[actId] = 'S';
+    }
+  }
   if (list.length) db.marks[actId] = list; else delete db.marks[actId];
+  render();
+  saveDB();
+}
+
+function cycleActPriority(actId) {
+  if (!myName) return;
+  const cycle = { M: 'S', S: 'C', C: 'W', W: 'M' };
+  const current = ((db.priorities || {})[myName] || {})[actId] || 'S';
+  const next = cycle[current];
+  db.priorities = db.priorities || {};
+  db.priorities[myName] = db.priorities[myName] || {};
+  db.priorities[myName][actId] = next;
+  pendingPriorities[actId] = next;
   render();
   saveDB();
 }
@@ -1949,6 +2010,10 @@ function renderStageView() {
   document.getElementById('stage-view').innerHTML = `<div class="stage-grid">${cols}</div>`;
 }
 
+function actPriority(actId, name) {
+  return ((db.priorities || {})[name || myName] || {})[actId] || 'S';
+}
+
 function renderCard(act) {
   const members  = db.marks[act.id] || [];
   const isMarked = myName && members.includes(myName);
@@ -1958,13 +2023,18 @@ function renderCard(act) {
     ? `style="background:${rgba(mc,0.12)};border-color:${mc}"`
     : '';
 
+  const p = isMarked ? actPriority(act.id) : null;
+  const badge = p
+    ? `<button class="act-priority-badge ${p}" onclick="event.stopPropagation();cycleActPriority('${act.id}')" title="Priority: ${PRIORITY_LABEL[p]} — click to change">${p}</button>`
+    : '';
+
   const dots = members.map(n => {
     const c = colorOf(n);
     return `<span class="act-dot" style="background:${c};color:${textColor(c)}" title="${n}">${n[0].toUpperCase()}</span>`;
   }).join('');
 
   return `<div class="act-card${isMarked?' marked':''}" ${style} onclick="toggleMark('${act.id}')">
-    <div class="act-name">${act.name}</div>
+    <div class="act-name">${act.name}${badge}</div>
     <div class="act-time">${act.start}–${act.end}</div>
     ${dots ? `<div class="act-dots">${dots}</div>` : ''}
   </div>`;
@@ -2061,11 +2131,17 @@ function renderFlowView() {
         return `<span class="act-dot" style="background:${c};color:${textColor(c)}" title="${n}">${n[0].toUpperCase()}</span>`;
       }).join('');
 
+      const p = isMarked ? actPriority(act.id) : null;
+      const flowBadge = p && width >= 36
+        ? `<button class="act-priority-badge ${p}" style="display:block;margin-top:2px" onclick="event.stopPropagation();cycleActPriority('${act.id}')">${p}</button>`
+        : '';
+
       return `<div class="flow-act${isMarked ? ' marked' : ''}"
           style="left:${left}px;width:${width}px;background:${bg};border-color:${borderColor}"
           onclick="toggleMark('${act.id}')">
         <div class="flow-act-name">${act.name}</div>
         ${width >= 90  ? `<div class="flow-act-time">${act.start}–${act.end}</div>` : ''}
+        ${flowBadge}
         ${width >= 36 && dots ? `<div class="act-dots" style="margin-top:auto">${dots}</div>` : ''}
       </div>`;
     }).join('');
@@ -2106,15 +2182,22 @@ function renderSummaryView() {
       .filter(([,v]) => v.includes(name))
       .map(([id]) => allActs.find(a => a.id === id))
       .filter(Boolean)
-      .sort((a,b) => timeToMins(a.start) - timeToMins(b.start));
+      .sort((a, b) => {
+        const pa = PRIORITY_ORDER.indexOf(actPriority(a.id, name));
+        const pb = PRIORITY_ORDER.indexOf(actPriority(b.id, name));
+        return pa !== pb ? pa - pb : timeToMins(a.start) - timeToMins(b.start);
+      });
 
-    const tags = picked.map(a =>
-      `<div class="summary-tag" style="border-color:${rgba(color,0.3)}">
+    const tags = picked.map(a => {
+      const p = actPriority(a.id, name);
+      const badge = `<button class="act-priority-badge ${p}" style="pointer-events:${name===myName?'auto':'none'}"
+        onclick="event.stopPropagation();cycleActPriority('${a.id}')">${p}</button>`;
+      return `<div class="summary-tag" style="border-color:${rgba(color,0.3)}">
         <span class="s-stage" style="color:${color}">${a.stage}</span>
-        ${a.name}
+        ${a.name}${name === myName ? badge : ` <span class="act-priority-badge ${p}" style="pointer-events:none;cursor:default">${p}</span>`}
         <span class="s-time">${a.start}–${a.end}</span>
-      </div>`
-    ).join('');
+      </div>`;
+    }).join('');
 
     return `<div class="summary-person">
       <h3 style="color:${color}">

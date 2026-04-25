@@ -459,88 +459,6 @@
     margin-bottom: 0;
   }
 
-  /* ── UPDATE PANEL ────────────────────────────────────────────── */
-  #update-toggle {
-    position: fixed;
-    bottom: 16px;
-    right: 16px;
-    background: var(--surface2);
-    border: 1px solid var(--border);
-    border-radius: 8px;
-    padding: 8px 14px;
-    color: var(--muted);
-    font-family: inherit;
-    font-size: 11px;
-    cursor: pointer;
-    z-index: 200;
-    transition: all 0.15s;
-  }
-  #update-toggle:hover { color: var(--text); border-color: #555; }
-
-  #update-panel {
-    display: none;
-    position: fixed;
-    bottom: 0; left: 0; right: 0;
-    background: var(--surface);
-    border-top: 2px solid var(--border);
-    padding: 16px;
-    z-index: 300;
-    max-height: 60vh;
-    overflow-y: auto;
-  }
-  #update-panel h2 {
-    font-family: 'Bebas Neue', sans-serif;
-    font-size: 18px;
-    letter-spacing: 3px;
-    color: #fff;
-    margin-bottom: 8px;
-  }
-  #update-panel p {
-    font-size: 11px;
-    color: var(--muted);
-    margin-bottom: 10px;
-    line-height: 1.6;
-  }
-  #update-panel p a { color: var(--accent); text-decoration: none; }
-  #update-panel p a:hover { text-decoration: underline; }
-  #lineup-paste {
-    width: 100%;
-    background: var(--surface2);
-    border: 1px solid var(--border);
-    border-radius: 6px;
-    padding: 10px 12px;
-    color: var(--text);
-    font-family: inherit;
-    font-size: 11px;
-    resize: vertical;
-    min-height: 120px;
-    outline: none;
-    margin-bottom: 10px;
-  }
-  #lineup-paste:focus { border-color: var(--accent); }
-  .update-btns { display: flex; gap: 8px; }
-  #parse-btn {
-    background: var(--accent);
-    border: none; border-radius: 6px;
-    padding: 8px 16px; color: #fff;
-    font-family: inherit; font-size: 12px;
-    font-weight: 700; cursor: pointer;
-  }
-  #close-panel-btn {
-    background: none;
-    border: 1px solid var(--border);
-    border-radius: 6px;
-    padding: 8px 14px; color: var(--muted);
-    font-family: inherit; font-size: 12px;
-    cursor: pointer;
-  }
-  #parse-result {
-    margin-top: 10px;
-    font-size: 11px;
-    color: var(--accent2);
-    line-height: 1.6;
-  }
-
   /* ── HOME / OVERVIEW ─────────────────────────────────────────── */
   #home-view { display: flex; flex-direction: column; gap: 16px; }
 
@@ -2116,81 +2034,6 @@ Object.values(DAYS).forEach(day => {
   day.acts.sort((a, b) => timeToMins(a.start) - timeToMins(b.start));
 });
 
-// ─── UPDATE PANEL ─────────────────────────────────────────────────────────────
-function toggleUpdatePanel() {
-  const p = document.getElementById('update-panel');
-  p.style.display = p.style.display === 'block' ? 'none' : 'block';
-}
-
-function parseAndUpdate() {
-  const text  = document.getElementById('lineup-paste').value.trim();
-  const result = document.getElementById('parse-result');
-  if (!text) { result.textContent = 'Nothing to parse.'; return; }
-
-  const lines  = text.split('\n').map(l => l.trim()).filter(Boolean);
-  const parsed = [];
-  let   errors = 0;
-
-  // Support separators: · | tab | comma (last two fields always time range HH:MM - HH:MM)
-  const timeRe = /(\d{1,2}:\d{2})\s*[-–]\s*(\d{1,2}:\d{2})/;
-
-  // Day detection keywords
-  const dayMap = { fri: 'friday', sat: 'saturday', sun: 'sunday',
-                   vrijdag: 'friday', zaterdag: 'saturday', zondag: 'sunday',
-                   friday: 'friday', saturday: 'saturday', sunday: 'sunday',
-                   '12': 'friday', '13': 'saturday', '14': 'sunday' };
-  let currentDay = 'friday';
-
-  lines.forEach(line => {
-    // Check if line is a day header
-    const lower = line.toLowerCase().replace(/[^a-z0-9]/g, ' ').trim();
-    for (const [key, val] of Object.entries(dayMap)) {
-      if (lower === key || lower.startsWith(key + ' ') || lower.endsWith(' ' + key)) {
-        currentDay = val; return;
-      }
-    }
-
-    const timeMatch = line.match(timeRe);
-    if (!timeMatch) { errors++; return; }
-
-    const start = timeMatch[1].padStart(5, '0');
-    const end   = timeMatch[2].padStart(5, '0');
-    const rest  = line.replace(timeRe, '').replace(/[-–·|,\t]+/g, '·').split('·').map(s => s.trim()).filter(Boolean);
-
-    if (rest.length < 2) { errors++; return; }
-
-    // Heuristic: shorter part is usually stage name
-    const stage = rest[0];
-    const name  = rest.slice(1).join(' ');
-
-    parsed.push({ id: 'u' + Math.random().toString(36).slice(2,8), name, stage, start, end, day: currentDay });
-  });
-
-  if (!parsed.length) {
-    result.innerHTML = '<span style="color:var(--accent)">Could not parse any acts. Check the format.</span>';
-    return;
-  }
-
-  // Merge into DAYS — keep existing acts not in parsed set if user wants
-  if (confirm(`Parsed ${parsed.length} acts. Replace the full lineup? (Cancel = merge/add only)`)) {
-    Object.values(DAYS).forEach(d => d.acts = []);
-  }
-
-  parsed.forEach(a => {
-    const day = DAYS[a.day];
-    if (!day) return;
-    // Deduplicate by name+stage+start
-    const exists = day.acts.find(x => x.name === a.name && x.stage === a.stage && x.start === a.start);
-    if (!exists) day.acts.push(a);
-  });
-
-  // Re-sort
-  Object.values(DAYS).forEach(day => day.acts.sort((a, b) => timeToMins(a.start) - timeToMins(b.start)));
-
-  result.innerHTML = `✓ Added/updated <strong>${parsed.length}</strong> acts${errors ? `, skipped ${errors} unparseable lines` : ''}.`;
-  render();
-}
-
 // ─── BOOT ─────────────────────────────────────────────────────────────────────
 document.getElementById('name-input').addEventListener('keydown', e => {
   if (e.key === 'Enter') joinFestival();
@@ -2224,25 +2067,6 @@ loadDB().then(() => {
   schedulePoll();
 });
 </script>
-
-<!-- UPDATE PANEL -->
-<button id="update-toggle" onclick="toggleUpdatePanel()">⟳ Update lineup</button>
-
-<div id="update-panel">
-  <h2>Update Lineup</h2>
-  <p>
-    Go to <a href="https://www.bestkeptsecret.nl/program/timetable" target="_blank">bestkeptsecret.nl/program/timetable</a>,
-    select all text on the page (Ctrl+A / Cmd+A), copy it, and paste below.<br>
-    Or paste a simple list: one act per line in the format<br>
-    <code style="color:#fff">StageName · ActName · HH:MM - HH:MM</code> (or use tab/comma as separator)
-  </p>
-  <textarea id="lineup-paste" placeholder="Paste timetable text here…"></textarea>
-  <div class="update-btns">
-    <button id="parse-btn" onclick="parseAndUpdate()">Parse &amp; Update</button>
-    <button id="close-panel-btn" onclick="toggleUpdatePanel()">Cancel</button>
-  </div>
-  <div id="parse-result"></div>
-</div>
 
 </body>
 </html>

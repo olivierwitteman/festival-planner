@@ -51,6 +51,7 @@ Send `https://yourusername.github.io/festival-planner` to your group. Everyone:
 - **Filter** — tap a name to see only their picks
 - **Auto-sync** — polls every 12 s normally, every 5 s during the festival weekend
 - **Map view** — drop a pin per act so the group can find each other on-site
+- **Bring list** — shared checklist of things to pack; everyone can add items and claim what they'll bring
 - **Mobile-first** — works great on phones
 
 ## 📅 Subscribe to a live calendar feed

@@ -625,6 +625,130 @@
   }
   #clear-pin-btn:hover { color: var(--text); border-color: #555; }
 
+  /* ── BRING LIST ──────────────────────────────────────────────── */
+  #list-add {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 16px;
+    align-items: stretch;
+  }
+  #list-input {
+    flex: 1;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 8px 12px;
+    color: var(--text);
+    font-family: inherit;
+    font-size: 12px;
+    outline: none;
+    min-width: 0;
+  }
+  #list-input:focus { border-color: var(--accent); }
+  #list-input::placeholder { color: var(--muted); }
+  #list-add-btn {
+    background: var(--accent);
+    border: none;
+    border-radius: 6px;
+    padding: 8px 18px;
+    color: #fff;
+    cursor: pointer;
+    font-family: inherit;
+    font-size: 12px;
+    font-weight: 700;
+    white-space: nowrap;
+  }
+  #list-add-btn:hover { opacity: 0.85; }
+
+  #list-items { display: flex; flex-direction: column; gap: 8px; }
+
+  .list-item {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 10px 12px;
+    transition: border-color 0.15s, opacity 0.15s;
+  }
+  .list-item.claimed {
+    opacity: 0.78;
+    border-color: rgba(60,180,75,0.4);
+    background: linear-gradient(180deg, rgba(60,180,75,0.05), var(--surface));
+  }
+  .list-item-top {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+  }
+  .list-item-text {
+    flex: 1;
+    font-size: 13px;
+    color: var(--text);
+    line-height: 1.4;
+    word-break: break-word;
+  }
+  .list-item-remove {
+    background: none;
+    border: none;
+    color: #444;
+    font-size: 16px;
+    line-height: 1;
+    cursor: pointer;
+    padding: 0 4px;
+    flex-shrink: 0;
+  }
+  .list-item-remove:hover { color: var(--accent); }
+
+  .list-item-meta {
+    font-size: 10px;
+    color: var(--muted);
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    margin-top: 4px;
+  }
+
+  .list-item-claims {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-top: 8px;
+    align-items: center;
+  }
+
+  .list-claim-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    border-radius: 20px;
+    padding: 3px 10px;
+    font-size: 11px;
+    border: 1.5px solid var(--border);
+    color: #fff;
+    background: none;
+    line-height: 1;
+  }
+
+  .list-claim-btn {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    padding: 4px 12px;
+    color: var(--muted);
+    font-family: inherit;
+    font-size: 11px;
+    cursor: pointer;
+    margin-left: auto;
+  }
+  .list-claim-btn:hover  { color: var(--text); border-color: #555; }
+  .list-claim-btn.active { color: #fff; border-color: #3CB44B; background: rgba(60,180,75,0.18); }
+
+  #list-empty {
+    color: #333;
+    padding: 32px 0;
+    font-size: 11px;
+    letter-spacing: 2px;
+    text-align: center;
+  }
+
 </style>
 </head>
 <body>
@@ -657,6 +781,7 @@
       <button class="vtab active" id="vt-stage"   onclick="setView('stage')">Stage</button>
       <button class="vtab"        id="vt-summary" onclick="setView('summary')">Summary</button>
       <button class="vtab"        id="vt-map"     onclick="setView('map')">Map</button>
+      <button class="vtab"        id="vt-list"    onclick="setView('list')">Bring</button>
     </div>
   </div>
 
@@ -686,6 +811,14 @@
     <div id="map-actions">
       <button id="clear-pin-btn" onclick="clearMyLocation()">Clear my pin for this act</button>
     </div>
+  </div>
+  <div id="list-view"    style="display:none">
+    <div id="list-add">
+      <input type="text" id="list-input" placeholder="Add something to bring…" maxlength="120" autocomplete="off">
+      <button id="list-add-btn" onclick="addListItem()">Add</button>
+    </div>
+    <div id="list-items"></div>
+    <div id="list-empty">📝 NOTHING ON THE LIST YET</div>
   </div>
 </div>
 
@@ -886,7 +1019,7 @@ const DAYS = {
 };
 
 // ─── STATE ────────────────────────────────────────────────────────────────────
-let db         = { marks: {}, members: {}, locations: {} };
+let db         = { marks: {}, members: {}, locations: {}, list: {} };
 let mapActId   = '';
 let myName     = localStorage.getItem('fp_name')  || '';
 let myColor    = localStorage.getItem('fp_color') || '';
@@ -918,7 +1051,7 @@ async function loadDB() {
       headers: { 'X-Access-Key': JSONBIN_API_KEY }
     });
     if (!r.ok) throw new Error(r.status);
-    const remote = (await r.json()).record || { marks:{}, members:{}, locations:{} };
+    const remote = (await r.json()).record || { marks:{}, members:{}, locations:{}, list:{} };
     db = remote;
     applyPending(db);
     syncUI('ok', 'synced');
@@ -934,25 +1067,55 @@ let pendingToggles = {};
 // Pending pin placement scoped to a specific act:
 //   { actId, x, y, t } or { actId, clear: true, t }.
 let pendingLocation = null;
+// Pending bring-list operations to replay onto the merged state on save.
+// Each op: { type:'add', id, text, addedBy, addedAt }
+//        | { type:'claim', id, name, want:bool }
+//        | { type:'remove', id }
+let pendingListOps = [];
+
+function applyListOp(state, op) {
+  state.list = state.list || {};
+  if (op.type === 'add') {
+    if (!state.list[op.id]) {
+      state.list[op.id] = {
+        text:      op.text,
+        addedBy:   op.addedBy,
+        addedAt:   op.addedAt,
+        claimedBy: []
+      };
+    }
+  } else if (op.type === 'claim') {
+    const item = state.list[op.id];
+    if (!item) return;
+    const claimers = (item.claimedBy || []).filter(n => n !== op.name);
+    if (op.want) claimers.push(op.name);
+    item.claimedBy = claimers;
+  } else if (op.type === 'remove') {
+    delete state.list[op.id];
+  }
+}
 
 function applyPending(state) {
   if (!state.marks)     state.marks     = {};
   if (!state.members)   state.members   = {};
   if (!state.locations) state.locations = {};
-  if (!myName) return;                       // nothing to replay for an anonymous tab
-  if (myColor) state.members[myName] = myColor;
-  for (const [actId, want] of Object.entries(pendingToggles)) {
-    const list = (state.marks[actId] || []).filter(n => n !== myName);
-    if (want) list.push(myName);
-    if (list.length) state.marks[actId] = list; else delete state.marks[actId];
+  if (!state.list)      state.list      = {};
+  if (myName && myColor) state.members[myName] = myColor;
+  if (myName) {
+    for (const [actId, want] of Object.entries(pendingToggles)) {
+      const list = (state.marks[actId] || []).filter(n => n !== myName);
+      if (want) list.push(myName);
+      if (list.length) state.marks[actId] = list; else delete state.marks[actId];
+    }
+    if (pendingLocation && pendingLocation.actId) {
+      const aid = pendingLocation.actId;
+      state.locations[aid] = state.locations[aid] || {};
+      if (pendingLocation.clear) delete state.locations[aid][myName];
+      else state.locations[aid][myName] = { x: pendingLocation.x, y: pendingLocation.y, t: pendingLocation.t };
+      if (Object.keys(state.locations[aid]).length === 0) delete state.locations[aid];
+    }
   }
-  if (pendingLocation && pendingLocation.actId) {
-    const aid = pendingLocation.actId;
-    state.locations[aid] = state.locations[aid] || {};
-    if (pendingLocation.clear) delete state.locations[aid][myName];
-    else state.locations[aid][myName] = { x: pendingLocation.x, y: pendingLocation.y, t: pendingLocation.t };
-    if (Object.keys(state.locations[aid]).length === 0) delete state.locations[aid];
-  }
+  for (const op of pendingListOps) applyListOp(state, op);
 }
 
 // Debounced save: rapid clicks collapse into one fetch-merge-PUT cycle so
@@ -979,22 +1142,28 @@ async function doSave() {
   const snapshotPending  = { ...pendingToggles };
   const snapshotMembers  = { ...db.members };
   const snapshotLocation = pendingLocation;
+  const snapshotListOps  = pendingListOps.slice();
   try {
     // 1. Fetch fresh remote so we don't trample other devices' writes.
     const fr = await fetch(`https://api.jsonbin.io/v3/b/${JSONBIN_BIN_ID}/latest`, {
       headers: { 'X-Access-Key': JSONBIN_API_KEY }
     });
     if (!fr.ok) throw new Error('load: ' + fr.status);
-    const remote = (await fr.json()).record || { marks:{}, members:{}, locations:{} };
+    const remote = (await fr.json()).record || { marks:{}, members:{}, locations:{}, list:{} };
 
-    // 2. Merge: keep everyone else's marks/pins, overlay our own pending toggles + pin.
+    // 2. Merge: keep everyone else's marks / pins / items, overlay our pending edits.
     const merged = {
       marks:     { ...(remote.marks   || {}) },
       members:   { ...(remote.members || {}), ...snapshotMembers },
-      locations: {}
+      locations: {},
+      list:      {}
     };
     for (const [aid, byName] of Object.entries(remote.locations || {})) {
       merged.locations[aid] = { ...byName };
+    }
+    // Deep-copy list items so we don't mutate the remote response.
+    for (const [id, item] of Object.entries(remote.list || {})) {
+      merged.list[id] = { ...item, claimedBy: [...(item.claimedBy || [])] };
     }
     for (const [actId, want] of Object.entries(snapshotPending)) {
       const list = (merged.marks[actId] || []).filter(n => n !== myName);
@@ -1015,6 +1184,8 @@ async function doSave() {
       }
       if (Object.keys(merged.locations[aid]).length === 0) delete merged.locations[aid];
     }
+    // Replay our queued list operations onto the freshly-fetched state.
+    for (const op of snapshotListOps) applyListOp(merged, op);
 
     // 3. PUT the merged state.
     const wr = await fetch(`https://api.jsonbin.io/v3/b/${JSONBIN_BIN_ID}`, {
@@ -1033,6 +1204,10 @@ async function doSave() {
       if (pendingToggles[k] === v) delete pendingToggles[k];
     }
     if (pendingLocation === snapshotLocation) pendingLocation = null;
+    // Drop list ops we just persisted; any added during the save remain queued.
+    if (snapshotListOps.length) {
+      pendingListOps = pendingListOps.filter(op => !snapshotListOps.includes(op));
+    }
     syncUI('ok', 'saved');
     render();
   } catch {
@@ -1166,6 +1341,7 @@ function setView(v) {
   document.getElementById('vt-stage').classList.toggle('active',   v === 'stage');
   document.getElementById('vt-summary').classList.toggle('active', v === 'summary');
   document.getElementById('vt-map').classList.toggle('active',     v === 'map');
+  document.getElementById('vt-list').classList.toggle('active',    v === 'list');
   render();
 }
 
@@ -1198,9 +1374,11 @@ function render() {
   document.getElementById('stage-view').style.display   = activeView === 'stage'   ? 'block' : 'none';
   document.getElementById('summary-view').style.display = activeView === 'summary' ? 'block' : 'none';
   document.getElementById('map-view').style.display     = activeView === 'map'     ? 'block' : 'none';
+  document.getElementById('list-view').style.display    = activeView === 'list'    ? 'block' : 'none';
   if (activeView === 'stage')        renderStageView();
   else if (activeView === 'summary') renderSummaryView();
-  else                               renderMapView();
+  else if (activeView === 'map')     renderMapView();
+  else                               renderListView();
 }
 
 function renderMembersBar() {
@@ -1497,6 +1675,123 @@ function clearMyLocation() {
 }
 
 
+// ─── BRING LIST ───────────────────────────────────────────────────────────────
+function newListId() {
+  return 'l_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 7);
+}
+
+function addListItem() {
+  if (!myName) {
+    setView('stage');
+    document.getElementById('name-input').focus();
+    return;
+  }
+  const input = document.getElementById('list-input');
+  const text  = input.value.trim();
+  if (!text) return;
+  const op = {
+    type:    'add',
+    id:      newListId(),
+    text,
+    addedBy: myName,
+    addedAt: Date.now()
+  };
+  pendingListOps.push(op);
+  applyListOp(db, op);
+  input.value = '';
+  renderListView();
+  saveDB();
+}
+
+function toggleListClaim(id) {
+  if (!myName) {
+    setView('stage');
+    document.getElementById('name-input').focus();
+    return;
+  }
+  const item = (db.list || {})[id];
+  if (!item) return;
+  const want = !((item.claimedBy || []).includes(myName));
+  const op = { type: 'claim', id, name: myName, want };
+  pendingListOps.push(op);
+  applyListOp(db, op);
+  renderListView();
+  saveDB();
+}
+
+function removeListItem(id) {
+  const op = { type: 'remove', id };
+  pendingListOps.push(op);
+  applyListOp(db, op);
+  renderListView();
+  saveDB();
+}
+
+function renderListView() {
+  const container = document.getElementById('list-items');
+  const empty     = document.getElementById('list-empty');
+  const items = Object.entries(db.list || {})
+    .filter(([, it]) => it && typeof it.text === 'string')
+    .sort((a, b) => (a[1].addedAt || 0) - (b[1].addedAt || 0));
+
+  empty.style.display = items.length ? 'none' : 'block';
+  container.innerHTML = '';
+
+  items.forEach(([id, item]) => {
+    const claimers = item.claimedBy || [];
+    const mineClaimed = myName && claimers.includes(myName);
+
+    const card = document.createElement('div');
+    card.className = 'list-item' + (claimers.length ? ' claimed' : '');
+
+    const top = document.createElement('div');
+    top.className = 'list-item-top';
+    const text = document.createElement('span');
+    text.className = 'list-item-text';
+    text.textContent = item.text;
+    top.appendChild(text);
+
+    const remove = document.createElement('button');
+    remove.className = 'list-item-remove';
+    remove.textContent = '✕';
+    remove.title = 'Remove from list';
+    remove.onclick = () => removeListItem(id);
+    top.appendChild(remove);
+    card.appendChild(top);
+
+    if (item.addedBy) {
+      const meta = document.createElement('div');
+      meta.className = 'list-item-meta';
+      meta.textContent = `added by ${item.addedBy}`;
+      card.appendChild(meta);
+    }
+
+    const claims = document.createElement('div');
+    claims.className = 'list-item-claims';
+    claimers.forEach(n => {
+      const c   = colorOf(n);
+      const chip = document.createElement('span');
+      chip.className = 'list-claim-chip';
+      chip.style.borderColor = c;
+      const dot = document.createElement('span');
+      dot.className = 'chip-dot';
+      dot.style.background = c;
+      chip.appendChild(dot);
+      chip.appendChild(document.createTextNode(n));
+      claims.appendChild(chip);
+    });
+    const btn = document.createElement('button');
+    btn.className = 'list-claim-btn' + (mineClaimed ? ' active' : '');
+    btn.textContent = mineClaimed ? "✓ I'm bringing this" : "+ I'll bring it";
+    btn.onclick = () => toggleListClaim(id);
+    claims.appendChild(btn);
+    card.appendChild(claims);
+
+    container.appendChild(card);
+  });
+}
+
+
 // ─── SORT ACTS BY START TIME ──────────────────────────────────────────────────
 function timeToMins(t) {
   const [h, m] = t.split(':').map(Number);
@@ -1588,6 +1883,10 @@ document.getElementById('name-input').addEventListener('keydown', e => {
 });
 
 document.getElementById('map-canvas').addEventListener('click', setMyLocation);
+
+document.getElementById('list-input').addEventListener('keydown', e => {
+  if (e.key === 'Enter') addListItem();
+});
 
 if (myName) updateUserBar();
 

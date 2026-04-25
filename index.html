@@ -483,6 +483,148 @@
     line-height: 1.6;
   }
 
+  /* ── MAP VIEW (per-act) ──────────────────────────────────────── */
+  #map-help {
+    font-size: 11px;
+    color: var(--muted);
+    line-height: 1.5;
+    margin-bottom: 10px;
+  }
+  #map-act-bar {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin-bottom: 12px;
+  }
+  .map-act-label {
+    font-size: 10px;
+    letter-spacing: 2px;
+    color: var(--muted);
+    text-transform: uppercase;
+  }
+  #map-act-select {
+    flex: 1;
+    min-width: 200px;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 8px 10px;
+    color: var(--text);
+    font-family: inherit;
+    font-size: 12px;
+    outline: none;
+  }
+  #map-act-select:focus { border-color: var(--accent); }
+  #map-act-time {
+    font-size: 10px;
+    letter-spacing: 1px;
+    color: var(--muted);
+    text-transform: uppercase;
+    width: 100%;
+  }
+  #map-canvas {
+    position: relative;
+    background:
+      radial-gradient(rgba(255,255,255,0.04) 1px, transparent 1px) 0 0 / 16px 16px,
+      linear-gradient(180deg, rgba(255,92,77,0.08) 0%, var(--surface) 18%, var(--surface2) 100%);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    aspect-ratio: 4 / 3;
+    width: 100%;
+    max-width: 720px;
+    margin: 0 auto;
+    overflow: hidden;
+    user-select: none;
+    touch-action: manipulation;
+    cursor: crosshair;
+  }
+  .map-orientation {
+    position: absolute;
+    top: 6px;
+    left: 0; right: 0;
+    text-align: center;
+    font-size: 9px;
+    letter-spacing: 3px;
+    color: var(--accent);
+    text-transform: uppercase;
+    pointer-events: none;
+    opacity: 0.75;
+  }
+  .map-pin {
+    position: absolute;
+    transform: translate(-50%, -100%);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    pointer-events: auto;
+    z-index: 5;
+  }
+  .map-pin.stale { opacity: 0.45; }
+  .map-pin.is-me { z-index: 6; }
+  .map-pin-dot {
+    width: 24px; height: 24px;
+    border-radius: 50% 50% 50% 0;
+    transform: rotate(-45deg);
+    border: 2px solid #fff;
+    box-shadow: 0 3px 8px rgba(0,0,0,0.6);
+    display: flex; align-items: center; justify-content: center;
+  }
+  .map-pin-dot span {
+    transform: rotate(45deg);
+    font-size: 10px; font-weight: 700;
+  }
+  .map-pin.is-me .map-pin-dot {
+    box-shadow: 0 0 0 2px var(--bg), 0 0 0 4px currentColor, 0 3px 8px rgba(0,0,0,0.6);
+  }
+  .map-pin-label {
+    font-size: 10px;
+    background: rgba(0,0,0,0.78);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 1px 6px;
+    margin-top: 5px;
+    white-space: nowrap;
+    color: #fff;
+    line-height: 1.4;
+  }
+  .map-pin-time {
+    font-size: 9px;
+    color: var(--muted);
+    margin-left: 5px;
+  }
+  #map-empty {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #333;
+    font-size: 11px;
+    letter-spacing: 2px;
+    pointer-events: none;
+    text-align: center;
+    padding: 16px;
+  }
+  #map-actions {
+    margin-top: 14px;
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+  #clear-pin-btn {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 6px 12px;
+    color: var(--muted);
+    font-family: inherit;
+    font-size: 11px;
+    letter-spacing: 1px;
+    cursor: pointer;
+  }
+  #clear-pin-btn:hover { color: var(--text); border-color: #555; }
+
 </style>
 </head>
 <body>
@@ -514,6 +656,7 @@
     <div class="view-toggle">
       <button class="vtab active" id="vt-stage"   onclick="setView('stage')">Stage</button>
       <button class="vtab"        id="vt-summary" onclick="setView('summary')">Summary</button>
+      <button class="vtab"        id="vt-map"     onclick="setView('map')">Map</button>
     </div>
   </div>
 
@@ -529,13 +672,41 @@
   <div id="loading">LOADING LINEUP…</div>
   <div id="stage-view"   style="display:none"></div>
   <div id="summary-view" style="display:none"></div>
+  <div id="map-view"     style="display:none">
+    <div id="map-help"></div>
+    <div id="map-act-bar">
+      <span class="map-act-label">ACT</span>
+      <select id="map-act-select" onchange="onMapActChange(this.value)"></select>
+      <span id="map-act-time"></span>
+    </div>
+    <div id="map-canvas">
+      <div class="map-orientation">↑ STAGE / FRONT</div>
+      <div id="map-empty">📍 NO PINS YET — TAP ANYWHERE TO DROP YOURS</div>
+    </div>
+    <div id="map-actions">
+      <button id="clear-pin-btn" onclick="clearMyLocation()">Clear my pin for this act</button>
+    </div>
+  </div>
 </div>
 
 <!-- config.js holds your JSONBin credentials — never overwrite it -->
 <script src="config.js"></script>
 <script>
 // ─── CONSTANTS ────────────────────────────────────────────────────────────────
-const POLL_MS = 12000;
+// Poll frequencies. During the festival weekend the app polls aggressively so
+// pins and marks land within a few seconds; the rest of the year it backs off.
+const POLL_FAST_MS    = 5_000;
+const POLL_NORMAL_MS  = 12_000;
+// Festival window in absolute UTC, derived from BKS '26 (12–14 Jun, CEST).
+// Fast polling kicks in from the gates opening on Friday until everyone is
+// home on Monday morning.
+const FAST_POLL_START = Date.UTC(2026, 5, 12, 8,  0, 0);   // 12 Jun 10:00 CEST
+const FAST_POLL_END   = Date.UTC(2026, 5, 15, 4,  0, 0);   // 15 Jun 06:00 CEST
+
+function currentPollMs() {
+  const now = Date.now();
+  return (now >= FAST_POLL_START && now <= FAST_POLL_END) ? POLL_FAST_MS : POLL_NORMAL_MS;
+}
 
 const PALETTE = [
   "#E6194B", // red
@@ -715,7 +886,8 @@ const DAYS = {
 };
 
 // ─── STATE ────────────────────────────────────────────────────────────────────
-let db         = { marks: {}, members: {} };
+let db         = { marks: {}, members: {}, locations: {} };
+let mapActId   = '';
 let myName     = localStorage.getItem('fp_name')  || '';
 let myColor    = localStorage.getItem('fp_color') || '';
 let activeDay  = 'friday';
@@ -746,7 +918,7 @@ async function loadDB() {
       headers: { 'X-Access-Key': JSONBIN_API_KEY }
     });
     if (!r.ok) throw new Error(r.status);
-    const remote = (await r.json()).record || { marks:{}, members:{} };
+    const remote = (await r.json()).record || { marks:{}, members:{}, locations:{} };
     db = remote;
     applyPending(db);
     syncUI('ok', 'synced');
@@ -759,16 +931,27 @@ async function loadDB() {
 // server yet. Keyed by act id, value is the desired marked state for myName.
 // Re-applied after every load so a poll can't wipe an unsaved click.
 let pendingToggles = {};
+// Pending pin placement scoped to a specific act:
+//   { actId, x, y, t } or { actId, clear: true, t }.
+let pendingLocation = null;
 
 function applyPending(state) {
-  if (!state.marks)   state.marks   = {};
-  if (!state.members) state.members = {};
+  if (!state.marks)     state.marks     = {};
+  if (!state.members)   state.members   = {};
+  if (!state.locations) state.locations = {};
   if (!myName) return;                       // nothing to replay for an anonymous tab
   if (myColor) state.members[myName] = myColor;
   for (const [actId, want] of Object.entries(pendingToggles)) {
     const list = (state.marks[actId] || []).filter(n => n !== myName);
     if (want) list.push(myName);
     if (list.length) state.marks[actId] = list; else delete state.marks[actId];
+  }
+  if (pendingLocation && pendingLocation.actId) {
+    const aid = pendingLocation.actId;
+    state.locations[aid] = state.locations[aid] || {};
+    if (pendingLocation.clear) delete state.locations[aid][myName];
+    else state.locations[aid][myName] = { x: pendingLocation.x, y: pendingLocation.y, t: pendingLocation.t };
+    if (Object.keys(state.locations[aid]).length === 0) delete state.locations[aid];
   }
 }
 
@@ -793,25 +976,44 @@ async function doSave() {
     return;
   }
   saveInFlight = true;
-  const snapshotPending = { ...pendingToggles };
-  const snapshotMembers = { ...db.members };
+  const snapshotPending  = { ...pendingToggles };
+  const snapshotMembers  = { ...db.members };
+  const snapshotLocation = pendingLocation;
   try {
     // 1. Fetch fresh remote so we don't trample other devices' writes.
     const fr = await fetch(`https://api.jsonbin.io/v3/b/${JSONBIN_BIN_ID}/latest`, {
       headers: { 'X-Access-Key': JSONBIN_API_KEY }
     });
     if (!fr.ok) throw new Error('load: ' + fr.status);
-    const remote = (await fr.json()).record || { marks:{}, members:{} };
+    const remote = (await fr.json()).record || { marks:{}, members:{}, locations:{} };
 
-    // 2. Merge: keep everyone else's marks, overlay our own pending toggles.
+    // 2. Merge: keep everyone else's marks/pins, overlay our own pending toggles + pin.
     const merged = {
-      marks:   { ...(remote.marks   || {}) },
-      members: { ...(remote.members || {}), ...snapshotMembers }
+      marks:     { ...(remote.marks   || {}) },
+      members:   { ...(remote.members || {}), ...snapshotMembers },
+      locations: {}
     };
+    for (const [aid, byName] of Object.entries(remote.locations || {})) {
+      merged.locations[aid] = { ...byName };
+    }
     for (const [actId, want] of Object.entries(snapshotPending)) {
       const list = (merged.marks[actId] || []).filter(n => n !== myName);
       if (want) list.push(myName);
       if (list.length) merged.marks[actId] = list; else delete merged.marks[actId];
+    }
+    if (snapshotLocation && snapshotLocation.actId && myName) {
+      const aid = snapshotLocation.actId;
+      merged.locations[aid] = merged.locations[aid] || {};
+      if (snapshotLocation.clear) {
+        delete merged.locations[aid][myName];
+      } else {
+        // Last-write-wins by timestamp; only overwrite if our snapshot is newer.
+        const remoteLoc = merged.locations[aid][myName];
+        if (!remoteLoc || (snapshotLocation.t || 0) >= (remoteLoc.t || 0)) {
+          merged.locations[aid][myName] = { x: snapshotLocation.x, y: snapshotLocation.y, t: snapshotLocation.t };
+        }
+      }
+      if (Object.keys(merged.locations[aid]).length === 0) delete merged.locations[aid];
     }
 
     // 3. PUT the merged state.
@@ -830,6 +1032,7 @@ async function doSave() {
     for (const [k, v] of Object.entries(snapshotPending)) {
       if (pendingToggles[k] === v) delete pendingToggles[k];
     }
+    if (pendingLocation === snapshotLocation) pendingLocation = null;
     syncUI('ok', 'saved');
     render();
   } catch {
@@ -962,6 +1165,7 @@ function setView(v) {
   activeView = v;
   document.getElementById('vt-stage').classList.toggle('active',   v === 'stage');
   document.getElementById('vt-summary').classList.toggle('active', v === 'summary');
+  document.getElementById('vt-map').classList.toggle('active',     v === 'map');
   render();
 }
 
@@ -993,7 +1197,10 @@ function render() {
   renderMembersBar();
   document.getElementById('stage-view').style.display   = activeView === 'stage'   ? 'block' : 'none';
   document.getElementById('summary-view').style.display = activeView === 'summary' ? 'block' : 'none';
-  activeView === 'stage' ? renderStageView() : renderSummaryView();
+  document.getElementById('map-view').style.display     = activeView === 'map'     ? 'block' : 'none';
+  if (activeView === 'stage')        renderStageView();
+  else if (activeView === 'summary') renderSummaryView();
+  else                               renderMapView();
 }
 
 function renderMembersBar() {
@@ -1139,6 +1346,157 @@ function renderSummaryView() {
 }
 
 
+// ─── MAP VIEW (per-act) ───────────────────────────────────────────────────────
+const STALE_PIN_MS = 2 * 60 * 60 * 1000;   // dim pins older than 2h
+
+function relativeTime(t) {
+  if (!t) return '';
+  const d = Date.now() - t;
+  if (d < 60_000)         return 'just now';
+  if (d < 3_600_000)      return Math.floor(d / 60_000) + ' min ago';
+  if (d < 24 * 3_600_000) return Math.floor(d / 3_600_000) + ' h ago';
+  return Math.floor(d / (24 * 3_600_000)) + ' d ago';
+}
+
+function findActById(actId) {
+  for (const d of Object.values(DAYS)) {
+    const a = d.acts.find(x => x.id === actId);
+    if (a) return a;
+  }
+  return null;
+}
+
+function pickDefaultMapAct() {
+  // Prefer the first act on the day tab the user is currently viewing.
+  const today = (DAYS[activeDay] && DAYS[activeDay].acts) || [];
+  return today[0] ? today[0].id : '';
+}
+
+function populateMapActSelect() {
+  const sel = document.getElementById('map-act-select');
+  const prev = mapActId || sel.value;
+  sel.innerHTML = '';
+  Object.entries(DAYS).forEach(([key, d]) => {
+    const og = document.createElement('optgroup');
+    og.label = d.label;
+    d.acts.forEach(a => {
+      const pinCount = ((db.locations || {})[a.id]) ? Object.keys(db.locations[a.id]).length : 0;
+      const opt = document.createElement('option');
+      opt.value = a.id;
+      opt.textContent = `${a.start} · ${a.stage} · ${a.name}` + (pinCount ? `  · ${pinCount} 📍` : '');
+      og.appendChild(opt);
+    });
+    sel.appendChild(og);
+  });
+  if (prev && sel.querySelector(`option[value="${CSS.escape(prev)}"]`)) {
+    sel.value = prev;
+    mapActId = prev;
+  } else {
+    mapActId = pickDefaultMapAct();
+    if (mapActId) sel.value = mapActId;
+  }
+}
+
+function onMapActChange(actId) {
+  mapActId = actId;
+  renderMapView();
+}
+
+function renderMapView() {
+  populateMapActSelect();
+  const canvas = document.getElementById('map-canvas');
+  canvas.querySelectorAll('.map-pin').forEach(p => p.remove());
+
+  const help      = document.getElementById('map-help');
+  const empty     = document.getElementById('map-empty');
+  const timeLabel = document.getElementById('map-act-time');
+  const clearBtn  = document.getElementById('clear-pin-btn');
+
+  const act = mapActId ? findActById(mapActId) : null;
+  if (!act) {
+    help.textContent = 'No act selected.';
+    empty.style.display = 'flex';
+    timeLabel.textContent = '';
+    clearBtn.style.display = 'none';
+    return;
+  }
+
+  timeLabel.textContent = `${act.start}–${act.end} · ${act.stage}`;
+
+  const locsForAct = (db.locations && db.locations[mapActId]) || {};
+  const names = Object.keys(locsForAct);
+  empty.style.display = names.length ? 'none' : 'flex';
+
+  names.forEach(name => {
+    const loc = locsForAct[name];
+    if (!loc || typeof loc.x !== 'number' || typeof loc.y !== 'number') return;
+    const color = colorOf(name);
+    const stale = loc.t && (Date.now() - loc.t > STALE_PIN_MS);
+    const pin   = document.createElement('div');
+    pin.className = 'map-pin' + (name === myName ? ' is-me' : '') + (stale ? ' stale' : '');
+    pin.style.left  = (Math.max(0, Math.min(1, loc.x)) * 100) + '%';
+    pin.style.top   = (Math.max(0, Math.min(1, loc.y)) * 100) + '%';
+    pin.style.color = color;
+    const when = relativeTime(loc.t);
+    pin.title = when ? `${name} · ${when}` : name;
+    const dot = document.createElement('div');
+    dot.className = 'map-pin-dot';
+    dot.style.background = color;
+    dot.innerHTML = `<span style="color:${textColor(color)}">${name[0].toUpperCase()}</span>`;
+    const label = document.createElement('div');
+    label.className = 'map-pin-label';
+    label.textContent = name;
+    if (when) {
+      const sub = document.createElement('span');
+      sub.className = 'map-pin-time';
+      sub.textContent = when;
+      label.appendChild(sub);
+    }
+    pin.appendChild(dot);
+    pin.appendChild(label);
+    canvas.appendChild(pin);
+  });
+
+  help.textContent = myName
+    ? `📍 Tap anywhere to drop your pin near "${act.name}". Others see it within seconds.`
+    : '📍 Join with a name first to drop a pin.';
+  clearBtn.style.display = (myName && locsForAct[myName]) ? 'inline-block' : 'none';
+}
+
+function setMyLocation(e) {
+  if (!myName) {
+    setView('stage');
+    document.getElementById('name-input').focus();
+    return;
+  }
+  if (!mapActId) return;
+  if (e.target.closest('.map-pin')) return;            // ignore taps on existing pins
+  const canvas = document.getElementById('map-canvas');
+  const rect   = canvas.getBoundingClientRect();
+  const x = (e.clientX - rect.left) / rect.width;
+  const y = (e.clientY - rect.top)  / rect.height;
+  if (x < 0 || x > 1 || y < 0 || y > 1) return;
+  const t = Date.now();
+  db.locations = db.locations || {};
+  db.locations[mapActId] = db.locations[mapActId] || {};
+  db.locations[mapActId][myName] = { x, y, t };
+  pendingLocation = { actId: mapActId, x, y, t };
+  renderMapView();
+  saveDB();
+}
+
+function clearMyLocation() {
+  if (!myName || !mapActId) return;
+  if (db.locations && db.locations[mapActId]) {
+    delete db.locations[mapActId][myName];
+    if (Object.keys(db.locations[mapActId]).length === 0) delete db.locations[mapActId];
+  }
+  pendingLocation = { actId: mapActId, clear: true, t: Date.now() };
+  renderMapView();
+  saveDB();
+}
+
+
 // ─── SORT ACTS BY START TIME ──────────────────────────────────────────────────
 function timeToMins(t) {
   const [h, m] = t.split(':').map(Number);
@@ -1229,12 +1587,25 @@ document.getElementById('name-input').addEventListener('keydown', e => {
   if (e.key === 'Enter') joinFestival();
 });
 
+document.getElementById('map-canvas').addEventListener('click', setMyLocation);
+
 if (myName) updateUserBar();
+
+// Recursive setTimeout so each tick can recompute the cadence — no need to
+// reload the page on the day the festival starts.
+function schedulePoll() {
+  if (!configured) return;
+  setTimeout(async () => {
+    await loadDB();
+    render();
+    schedulePoll();
+  }, currentPollMs());
+}
 
 loadDB().then(() => {
   if (myName && db.members[myName]) myColor = db.members[myName];
   render();
-  if (configured) setInterval(() => loadDB().then(render), POLL_MS);
+  schedulePoll();
 });
 </script>
 

@@ -49,7 +49,8 @@ Send `https://yourusername.github.io/festival-planner` to your group. Everyone:
 - **Stage view** — acts grouped by stage
 - **Summary view** — see each person’s full pick list
 - **Filter** — tap a name to see only their picks
-- **Auto-sync** — polls every 12 seconds, no refresh needed
+- **Auto-sync** — polls every 12 s normally, every 5 s during the festival weekend
+- **Map view** — drop a pin per act so the group can find each other on-site
 - **Mobile-first** — works great on phones
 
 ## 📅 Subscribe to a live calendar feed
@@ -61,13 +62,15 @@ any calendar app (Apple, Google, Outlook, Fantastical…) at:
 - **Everyone's picks** — `webcal://<user>.github.io/<repo>/calendar/everyone.ics`
 - **One person's picks** — `webcal://<user>.github.io/<repo>/calendar/person-<name>.ics`
 
-The action runs daily at 05:00 UTC (workflow file:
-`.github/workflows/generate-ics.yml`); trigger it on demand from the Actions
-tab. By default it reads JSONBin credentials from `config.js`. To override,
-set `JSONBIN_BIN_ID` and `JSONBIN_API_KEY` as repository secrets.
+The action runs daily at 05:00 UTC year-round, **and every 15 minutes from
+12–15 June** so the calendar feed stays fresh during the festival weekend
+(workflow file: `.github/workflows/generate-ics.yml`). Trigger it on demand
+from the Actions tab. By default it reads JSONBin credentials from `config.js`.
+To override, set `JSONBIN_BIN_ID` and `JSONBIN_API_KEY` as repository secrets.
 
 > Calendar apps re-poll subscriptions on their own schedule (typically every
-> 1–24 h), so changes can take up to a day to land.
+> 1–24 h), so changes can take up to a day to land. Edit the festival window
+> in the workflow file when reusing this for a different year.
 
 ## 🛠 No-backend option
 

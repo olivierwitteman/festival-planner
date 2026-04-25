@@ -1113,31 +1113,36 @@
   .list-claim-btn:hover  { color: var(--text); border-color: #555; }
   .list-claim-btn.active { color: #fff; border-color: #3CB44B; background: rgba(60,180,75,0.18); }
 
-  .act-priority-badge {
-    font-family: 'Bebas Neue', sans-serif;
-    font-size: 11px;
-    letter-spacing: 1px;
-    border-radius: 3px;
-    border: 1.5px solid;
-    padding: 0px 4px;
-    cursor: pointer;
-    background: none;
-    line-height: 1.4;
-    vertical-align: middle;
-    transition: opacity 0.15s;
-    display: inline-block;
-    margin-left: 4px;
+  .act-score-row {
+    display: flex;
+    gap: 10px;
+    margin-top: 5px;
+    flex-wrap: wrap;
+  }
+  .act-score {
+    display: flex;
+    align-items: center;
+    gap: 3px;
+    font-size: 10px;
+    letter-spacing: 0.5px;
+    color: var(--muted);
+  }
+  .act-score-val { font-weight: 700; }
+  .act-score.want .act-score-val { color: #F59E0B; }
+  .act-score.retro .act-score-val { color: #FF5C4D; }
+
+  .act-star-rows { margin-top: 8px; display: flex; flex-direction: column; gap: 4px; }
+  .act-star-row-label {
+    font-size: 9px;
+    letter-spacing: 1.5px;
+    color: var(--muted);
+    text-transform: uppercase;
+    width: 38px;
     flex-shrink: 0;
   }
-  .act-priority-badge:hover { opacity: 0.65; }
-  .act-priority-badge.M { color: #FF5C4D; border-color: #FF5C4D; }
-  .act-priority-badge.S { color: #F59E0B; border-color: #F59E0B; }
-  .act-priority-badge.C { color: #38BDF8; border-color: #38BDF8; }
-
   .act-stars {
     display: flex;
     gap: 2px;
-    margin-top: 6px;
     align-items: center;
   }
   .act-star {
@@ -1538,7 +1543,7 @@ const DAYS = {
 };
 
 // ─── STATE ────────────────────────────────────────────────────────────────────
-let db         = { marks: {}, members: {}, locations: {}, list: {}, priorities: {}, ratings: {} };
+let db         = { marks: {}, members: {}, locations: {}, list: {}, want: {}, ratings: {} };
 let mapStage   = '';
 let myName     = localStorage.getItem('fp_name')  || '';
 let myColor    = localStorage.getItem('fp_color') || '';
@@ -1585,9 +1590,9 @@ async function loadDB() {
 // server yet. Keyed by act id, value is the desired marked state for myName.
 // Re-applied after every load so a poll can't wipe an unsaved click.
 let pendingToggles = {};
-// Pending priority changes: { [actId]: 'M'|'S'|'C' }
-let pendingPriorities = {};
-// Pending star ratings: { [actId]: 1-5 }
+// Pending "want to see" planning scores: { [actId]: 1-5 }
+let pendingWant = {};
+// Pending retrospective ratings: { [actId]: 1-5 }
 let pendingRatings = {};
 // Pending pin placement scoped to a specific act:
 //   { actId, x, y, t } or { actId, clear: true, t }.
@@ -1630,17 +1635,17 @@ function applyPending(state) {
   if (!state.members)    state.members    = {};
   if (!state.locations)  state.locations  = {};
   if (!state.list)       state.list       = {};
-  if (!state.priorities) state.priorities = {};
-  if (!state.ratings)    state.ratings    = {};
+  if (!state.want)    state.want    = {};
+  if (!state.ratings) state.ratings = {};
   if (myName && myColor) state.members[myName] = myColor;
   if (myName) {
-    for (const [actId, want] of Object.entries(pendingToggles)) {
+    for (const [actId, toggle] of Object.entries(pendingToggles)) {
       const list = (state.marks[actId] || []).filter(n => n !== myName);
-      if (want) list.push(myName);
+      if (toggle) list.push(myName);
       if (list.length) state.marks[actId] = list; else delete state.marks[actId];
     }
-    if (Object.keys(pendingPriorities).length) {
-      state.priorities[myName] = { ...(state.priorities[myName] || {}), ...pendingPriorities };
+    if (Object.keys(pendingWant).length) {
+      state.want[myName] = { ...(state.want[myName] || {}), ...pendingWant };
     }
     if (Object.keys(pendingRatings).length) {
       state.ratings[myName] = { ...(state.ratings[myName] || {}), ...pendingRatings };
@@ -1678,10 +1683,10 @@ async function doSave() {
     return;
   }
   saveInFlight = true;
-  const snapshotPending    = { ...pendingToggles };
-  const snapshotPriorities = { ...pendingPriorities };
-  const snapshotRatings    = { ...pendingRatings };
-  const snapshotMembers    = myName ? { [myName]: db.members[myName] } : {};
+  const snapshotPending  = { ...pendingToggles };
+  const snapshotWant     = { ...pendingWant };
+  const snapshotRatings  = { ...pendingRatings };
+  const snapshotMembers  = myName ? { [myName]: db.members[myName] } : {};
   const snapshotLocation   = pendingLocation;
   const snapshotListOps    = pendingListOps.slice();
   try {
@@ -1690,22 +1695,22 @@ async function doSave() {
       headers: { 'X-Access-Key': JSONBIN_API_KEY }
     });
     if (!fr.ok) throw new Error('load: ' + fr.status);
-    const remote = (await fr.json()).record || { marks:{}, members:{}, locations:{}, list:{}, priorities:{}, ratings:{} };
+    const remote = (await fr.json()).record || { marks:{}, members:{}, locations:{}, list:{}, want:{}, ratings:{} };
 
     // 2. Merge: keep everyone else's marks / pins / items, overlay our pending edits.
     const merged = {
-      marks:      { ...(remote.marks   || {}) },
-      members:    { ...(remote.members || {}), ...snapshotMembers },
-      locations:  {},
-      list:       {},
-      priorities: {},
-      ratings:    {}
+      marks:    { ...(remote.marks   || {}) },
+      members:  { ...(remote.members || {}), ...snapshotMembers },
+      locations: {},
+      list:      {},
+      want:      {},
+      ratings:   {}
     };
-    for (const [name, prioMap] of Object.entries(remote.priorities || {})) {
-      merged.priorities[name] = { ...(prioMap || {}) };
+    for (const [name, m] of Object.entries(remote.want || {})) {
+      merged.want[name] = { ...(m || {}) };
     }
-    if (myName && Object.keys(snapshotPriorities).length) {
-      merged.priorities[myName] = { ...(merged.priorities[myName] || {}), ...snapshotPriorities };
+    if (myName && Object.keys(snapshotWant).length) {
+      merged.want[myName] = { ...(merged.want[myName] || {}), ...snapshotWant };
     }
     for (const [name, ratingMap] of Object.entries(remote.ratings || {})) {
       merged.ratings[name] = { ...(ratingMap || {}) };
@@ -1758,8 +1763,8 @@ async function doSave() {
     for (const [k, v] of Object.entries(snapshotPending)) {
       if (pendingToggles[k] === v) delete pendingToggles[k];
     }
-    for (const [k, v] of Object.entries(snapshotPriorities)) {
-      if (pendingPriorities[k] === v) delete pendingPriorities[k];
+    for (const [k, v] of Object.entries(snapshotWant)) {
+      if (pendingWant[k] === v) delete pendingWant[k];
     }
     for (const [k, v] of Object.entries(snapshotRatings)) {
       if (pendingRatings[k] === v) delete pendingRatings[k];
@@ -1862,7 +1867,7 @@ function joinAs(name) {
 function leaveSession() {
   myName = ''; myColor = '';
   pendingToggles = {};
-  pendingPriorities = {};
+  pendingWant    = {};
   pendingRatings = {};
   localStorage.removeItem('fp_name');
   localStorage.removeItem('fp_color');
@@ -1921,29 +1926,21 @@ function toggleMark(actId) {
   const isMarked = (db.marks[actId] || []).includes(myName);
   pendingToggles[actId] = !isMarked;
   const list = (db.marks[actId] || []).filter(n => n !== myName);
-  if (!isMarked) {
-    list.push(myName);
-    if (!((db.priorities || {})[myName] || {})[actId]) {
-      db.priorities = db.priorities || {};
-      db.priorities[myName] = db.priorities[myName] || {};
-      db.priorities[myName][actId] = 'S';
-      pendingPriorities[actId] = 'S';
-    }
-  }
+  if (!isMarked) list.push(myName);
   if (list.length) db.marks[actId] = list; else delete db.marks[actId];
   render();
   saveDB();
 }
 
-function cycleActPriority(actId) {
+function setWantRating(actId, stars) {
   if (!myName) return;
-  const cycle = PRIORITY_CYCLE;
-  const current = ((db.priorities || {})[myName] || {})[actId] || 'S';
-  const next = cycle[current];
-  db.priorities = db.priorities || {};
-  db.priorities[myName] = db.priorities[myName] || {};
-  db.priorities[myName][actId] = next;
-  pendingPriorities[actId] = next;
+  db.want = db.want || {};
+  db.want[myName] = db.want[myName] || {};
+  const current = db.want[myName][actId];
+  const next = current === stars ? 0 : stars;
+  if (next) db.want[myName][actId] = next;
+  else delete db.want[myName][actId];
+  pendingWant[actId] = next || null;
   render();
   saveDB();
 }
@@ -2102,8 +2099,10 @@ function renderStageView() {
   document.getElementById('stage-view').innerHTML = `<div class="stage-grid">${cols}</div>`;
 }
 
-function actPriority(actId, name) {
-  return ((db.priorities || {})[name || myName] || {})[actId] || 'S';
+function avgWant(actId) {
+  const scores = Object.values(db.want || {}).map(m => m[actId]).filter(Boolean);
+  if (!scores.length) return null;
+  return scores.reduce((a, b) => a + b, 0) / scores.length;
 }
 
 function setActRating(actId, stars) {
@@ -2136,23 +2135,22 @@ function renderCard(act) {
     ? `style="background:${rgba(mc,0.12)};border-color:${mc}"`
     : '';
 
-  const p = isMarked ? actPriority(act.id) : null;
-  const badge = p
-    ? `<button class="act-priority-badge ${p}" onclick="event.stopPropagation();cycleActPriority('${act.id}')" title="Priority: ${PRIORITY_LABEL[p]} — click to change">${p}</button>`
-    : '';
-
   const dots = members.map(n => {
     const c = colorOf(n);
     return `<span class="act-dot" style="background:${c};color:${textColor(c)}" title="${n}">${n[0].toUpperCase()}</span>`;
   }).join('');
 
-  const avg = avgRating(act.id);
-  const avgHtml = avg ? `<div class="act-avg-rating">${'★'.repeat(Math.round(avg))}${'☆'.repeat(5-Math.round(avg))} ${avg.toFixed(1)}</div>` : '';
+  const want  = avgWant(act.id);
+  const retro = avgRating(act.id);
+  const scores = (want || retro) ? `<div class="act-score-row">
+    ${want  ? `<span class="act-score want">WANT <span class="act-score-val">★${want.toFixed(1)}</span></span>` : ''}
+    ${retro ? `<span class="act-score retro">WAS <span class="act-score-val">★${retro.toFixed(1)}</span></span>` : ''}
+  </div>` : '';
 
   return `<div class="act-card${isMarked?' marked':''}" ${style} onclick="toggleMark('${act.id}')">
-    <div class="act-name">${act.name}${badge}</div>
+    <div class="act-name">${act.name}</div>
     <div class="act-time">${act.start}–${act.end}</div>
-    ${avgHtml}
+    ${scores}
     ${dots ? `<div class="act-dots">${dots}</div>` : ''}
   </div>`;
 }
@@ -2248,9 +2246,13 @@ function renderFlowView() {
         return `<span class="act-dot" style="background:${c};color:${textColor(c)}" title="${n}">${n[0].toUpperCase()}</span>`;
       }).join('');
 
-      const p = isMarked ? actPriority(act.id) : null;
-      const flowBadge = p && width >= 36
-        ? `<button class="act-priority-badge ${p}" style="display:block;margin-top:2px" onclick="event.stopPropagation();cycleActPriority('${act.id}')">${p}</button>`
+      const flowWant  = avgWant(act.id);
+      const flowRetro = avgRating(act.id);
+      const flowScores = width >= 60 && (flowWant || flowRetro)
+        ? `<div style="font-size:9px;color:var(--muted);margin-top:2px">
+            ${flowWant  ? `<span style="color:#F59E0B">★${flowWant.toFixed(1)}</span>` : ''}
+            ${flowRetro ? `<span style="color:#FF5C4D;margin-left:4px">★${flowRetro.toFixed(1)}</span>` : ''}
+          </div>`
         : '';
 
       return `<div class="flow-act${isMarked ? ' marked' : ''}"
@@ -2258,7 +2260,7 @@ function renderFlowView() {
           onclick="toggleMark('${act.id}')">
         <div class="flow-act-name">${act.name}</div>
         ${width >= 90  ? `<div class="flow-act-time">${act.start}–${act.end}</div>` : ''}
-        ${flowBadge}
+        ${flowScores}
         ${width >= 36 && dots ? `<div class="act-dots" style="margin-top:auto">${dots}</div>` : ''}
       </div>`;
     }).join('');
@@ -2300,33 +2302,38 @@ function renderSummaryView() {
       .map(([id]) => allActs.find(a => a.id === id))
       .filter(Boolean)
       .sort((a, b) => {
-        const pa = PRIORITY_ORDER.indexOf(actPriority(a.id, name));
-        const pb = PRIORITY_ORDER.indexOf(actPriority(b.id, name));
-        return pa !== pb ? pa - pb : timeToMins(a.start) - timeToMins(b.start);
+        const wa = ((db.want || {})[name] || {})[a.id] || 0;
+        const wb = ((db.want || {})[name] || {})[b.id] || 0;
+        return wb !== wa ? wb - wa : timeToMins(a.start) - timeToMins(b.start);
       });
 
+    const isMe = name === myName;
     const tags = picked.map(a => {
-      const p = actPriority(a.id, name);
-      const isMe = name === myName;
-      const badge = isMe
-        ? `<button class="act-priority-badge ${p}" onclick="event.stopPropagation();cycleActPriority('${a.id}')">${p}</button>`
-        : `<span class="act-priority-badge ${p}" style="pointer-events:none;cursor:default">${p}</span>`;
+      const wantScore  = (((db.want    || {})[name] || {})[a.id] || 0);
+      const retroScore = (((db.ratings || {})[name] || {})[a.id] || 0);
 
-      const myRating = isMe ? (((db.ratings || {})[myName] || {})[a.id] || 0) : 0;
-      const theirRating = !isMe ? (((db.ratings || {})[name] || {})[a.id] || 0) : 0;
-      const stars = isMe
-        ? `<div class="act-stars">${[1,2,3,4,5].map(n =>
-            `<button class="act-star${myRating >= n ? ' filled' : ''}" onclick="setActRating('${a.id}',${n})">★</button>`
-          ).join('')}<span class="act-star-label">${myRating ? myRating + '/5' : 'rate it'}</span></div>`
-        : theirRating
-          ? `<div class="act-stars">${'★'.repeat(theirRating)}${'☆'.repeat(5-theirRating)}</div>`
-          : '';
+      const wantBtns = isMe
+        ? [1,2,3,4,5].map(n =>
+            `<button class="act-star${wantScore >= n ? ' filled' : ''}" style="color:${wantScore >= n ? '#F59E0B' : ''}" onclick="setWantRating('${a.id}',${n})">★</button>`
+          ).join('') + `<span class="act-star-label">${wantScore ? wantScore+'/5' : 'rate'}</span>`
+        : `<span style="opacity:0.6">${'★'.repeat(wantScore)}${'☆'.repeat(5-wantScore)}</span>`;
+
+      const retroBtns = isMe
+        ? [1,2,3,4,5].map(n =>
+            `<button class="act-star${retroScore >= n ? ' filled' : ''}" style="color:${retroScore >= n ? '#FF5C4D' : ''}" onclick="setActRating('${a.id}',${n})">★</button>`
+          ).join('') + `<span class="act-star-label">${retroScore ? retroScore+'/5' : 'rate'}</span>`
+        : retroScore
+          ? `<span style="color:#FF5C4D;opacity:0.7">${'★'.repeat(retroScore)}${'☆'.repeat(5-retroScore)}</span>`
+          : '<span style="opacity:0.3">—</span>';
 
       return `<div class="summary-tag" style="border-color:${rgba(color,0.3)}">
         <span class="s-stage" style="color:${color}">${a.stage}</span>
-        ${a.name} ${badge}
+        ${a.name}
         <span class="s-time">${a.start}–${a.end}</span>
-        ${stars}
+        <div class="act-star-rows">
+          <div class="act-stars"><span class="act-star-row-label" style="color:#F59E0B">WANT</span>${wantBtns}</div>
+          <div class="act-stars"><span class="act-star-row-label" style="color:#FF5C4D">WAS</span>${retroBtns}</div>
+        </div>
       </div>`;
     }).join('');
 

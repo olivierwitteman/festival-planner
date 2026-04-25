@@ -1097,7 +1097,38 @@
   .act-priority-badge.M { color: #FF5C4D; border-color: #FF5C4D; }
   .act-priority-badge.S { color: #F59E0B; border-color: #F59E0B; }
   .act-priority-badge.C { color: #38BDF8; border-color: #38BDF8; }
-  .act-priority-badge.W { color: var(--muted); border-color: #333; }
+
+  .act-stars {
+    display: flex;
+    gap: 2px;
+    margin-top: 6px;
+    align-items: center;
+  }
+  .act-star {
+    background: none;
+    border: none;
+    font-size: 16px;
+    line-height: 1;
+    cursor: pointer;
+    padding: 0;
+    color: #333;
+    transition: color 0.1s, transform 0.1s;
+  }
+  .act-star.filled { color: #F59E0B; }
+  .act-star:hover  { transform: scale(1.2); }
+  .act-star-label {
+    font-size: 9px;
+    letter-spacing: 1.5px;
+    color: var(--muted);
+    text-transform: uppercase;
+    margin-left: 6px;
+  }
+  .act-avg-rating {
+    font-size: 10px;
+    color: #F59E0B;
+    margin-top: 4px;
+    letter-spacing: 0.5px;
+  }
 
   .list-priority-section {
     font-size: 9px;
@@ -1127,7 +1158,6 @@
   .list-priority-badge.M { color: #FF5C4D; border-color: #FF5C4D; }
   .list-priority-badge.S { color: #F59E0B; border-color: #F59E0B; }
   .list-priority-badge.C { color: #38BDF8; border-color: #38BDF8; }
-  .list-priority-badge.W { color: var(--muted); border-color: #333; }
 
   #list-empty {
     color: #333;
@@ -1464,7 +1494,7 @@ const DAYS = {
 };
 
 // ─── STATE ────────────────────────────────────────────────────────────────────
-let db         = { marks: {}, members: {}, locations: {}, list: {}, priorities: {} };
+let db         = { marks: {}, members: {}, locations: {}, list: {}, priorities: {}, ratings: {} };
 let mapStage   = '';
 let myName     = localStorage.getItem('fp_name')  || '';
 let myColor    = localStorage.getItem('fp_color') || '';
@@ -1511,8 +1541,10 @@ async function loadDB() {
 // server yet. Keyed by act id, value is the desired marked state for myName.
 // Re-applied after every load so a poll can't wipe an unsaved click.
 let pendingToggles = {};
-// Pending priority changes: { [actId]: 'M'|'S'|'C'|'W' }
+// Pending priority changes: { [actId]: 'M'|'S'|'C' }
 let pendingPriorities = {};
+// Pending star ratings: { [actId]: 1-5 }
+let pendingRatings = {};
 // Pending pin placement scoped to a specific act:
 //   { actId, x, y, t } or { actId, clear: true, t }.
 let pendingLocation = null;
@@ -1555,6 +1587,7 @@ function applyPending(state) {
   if (!state.locations)  state.locations  = {};
   if (!state.list)       state.list       = {};
   if (!state.priorities) state.priorities = {};
+  if (!state.ratings)    state.ratings    = {};
   if (myName && myColor) state.members[myName] = myColor;
   if (myName) {
     for (const [actId, want] of Object.entries(pendingToggles)) {
@@ -1564,6 +1597,9 @@ function applyPending(state) {
     }
     if (Object.keys(pendingPriorities).length) {
       state.priorities[myName] = { ...(state.priorities[myName] || {}), ...pendingPriorities };
+    }
+    if (Object.keys(pendingRatings).length) {
+      state.ratings[myName] = { ...(state.ratings[myName] || {}), ...pendingRatings };
     }
     if (pendingLocation && pendingLocation.stage) {
       const stg = pendingLocation.stage;
@@ -1600,6 +1636,7 @@ async function doSave() {
   saveInFlight = true;
   const snapshotPending    = { ...pendingToggles };
   const snapshotPriorities = { ...pendingPriorities };
+  const snapshotRatings    = { ...pendingRatings };
   const snapshotMembers    = myName ? { [myName]: db.members[myName] } : {};
   const snapshotLocation   = pendingLocation;
   const snapshotListOps    = pendingListOps.slice();
@@ -1609,7 +1646,7 @@ async function doSave() {
       headers: { 'X-Access-Key': JSONBIN_API_KEY }
     });
     if (!fr.ok) throw new Error('load: ' + fr.status);
-    const remote = (await fr.json()).record || { marks:{}, members:{}, locations:{}, list:{}, priorities:{} };
+    const remote = (await fr.json()).record || { marks:{}, members:{}, locations:{}, list:{}, priorities:{}, ratings:{} };
 
     // 2. Merge: keep everyone else's marks / pins / items, overlay our pending edits.
     const merged = {
@@ -1617,13 +1654,20 @@ async function doSave() {
       members:    { ...(remote.members || {}), ...snapshotMembers },
       locations:  {},
       list:       {},
-      priorities: {}
+      priorities: {},
+      ratings:    {}
     };
     for (const [name, prioMap] of Object.entries(remote.priorities || {})) {
       merged.priorities[name] = { ...(prioMap || {}) };
     }
     if (myName && Object.keys(snapshotPriorities).length) {
       merged.priorities[myName] = { ...(merged.priorities[myName] || {}), ...snapshotPriorities };
+    }
+    for (const [name, ratingMap] of Object.entries(remote.ratings || {})) {
+      merged.ratings[name] = { ...(ratingMap || {}) };
+    }
+    if (myName && Object.keys(snapshotRatings).length) {
+      merged.ratings[myName] = { ...(merged.ratings[myName] || {}), ...snapshotRatings };
     }
     for (const [aid, byName] of Object.entries(remote.locations || {})) {
       merged.locations[aid] = { ...byName };
@@ -1672,6 +1716,9 @@ async function doSave() {
     }
     for (const [k, v] of Object.entries(snapshotPriorities)) {
       if (pendingPriorities[k] === v) delete pendingPriorities[k];
+    }
+    for (const [k, v] of Object.entries(snapshotRatings)) {
+      if (pendingRatings[k] === v) delete pendingRatings[k];
     }
     if (pendingLocation === snapshotLocation) pendingLocation = null;
     // Drop list ops we just persisted; any added during the save remain queued.
@@ -1772,6 +1819,7 @@ function leaveSession() {
   myName = ''; myColor = '';
   pendingToggles = {};
   pendingPriorities = {};
+  pendingRatings = {};
   localStorage.removeItem('fp_name');
   localStorage.removeItem('fp_color');
   updateUserBar();
@@ -1845,7 +1893,7 @@ function toggleMark(actId) {
 
 function cycleActPriority(actId) {
   if (!myName) return;
-  const cycle = { M: 'S', S: 'C', C: 'W', W: 'M' };
+  const cycle = PRIORITY_CYCLE;
   const current = ((db.priorities || {})[myName] || {})[actId] || 'S';
   const next = cycle[current];
   db.priorities = db.priorities || {};
@@ -2014,6 +2062,27 @@ function actPriority(actId, name) {
   return ((db.priorities || {})[name || myName] || {})[actId] || 'S';
 }
 
+function setActRating(actId, stars) {
+  if (!myName) return;
+  db.ratings = db.ratings || {};
+  db.ratings[myName] = db.ratings[myName] || {};
+  const current = db.ratings[myName][actId];
+  const next = current === stars ? 0 : stars;   // tap same star to clear
+  if (next) db.ratings[myName][actId] = next;
+  else delete db.ratings[myName][actId];
+  pendingRatings[actId] = next || null;
+  render();
+  saveDB();
+}
+
+function avgRating(actId) {
+  const scores = Object.values(db.ratings || {})
+    .map(m => m[actId])
+    .filter(Boolean);
+  if (!scores.length) return null;
+  return scores.reduce((a, b) => a + b, 0) / scores.length;
+}
+
 function renderCard(act) {
   const members  = db.marks[act.id] || [];
   const isMarked = myName && members.includes(myName);
@@ -2033,9 +2102,13 @@ function renderCard(act) {
     return `<span class="act-dot" style="background:${c};color:${textColor(c)}" title="${n}">${n[0].toUpperCase()}</span>`;
   }).join('');
 
+  const avg = avgRating(act.id);
+  const avgHtml = avg ? `<div class="act-avg-rating">${'★'.repeat(Math.round(avg))}${'☆'.repeat(5-Math.round(avg))} ${avg.toFixed(1)}</div>` : '';
+
   return `<div class="act-card${isMarked?' marked':''}" ${style} onclick="toggleMark('${act.id}')">
     <div class="act-name">${act.name}${badge}</div>
     <div class="act-time">${act.start}–${act.end}</div>
+    ${avgHtml}
     ${dots ? `<div class="act-dots">${dots}</div>` : ''}
   </div>`;
 }
@@ -2190,12 +2263,26 @@ function renderSummaryView() {
 
     const tags = picked.map(a => {
       const p = actPriority(a.id, name);
-      const badge = `<button class="act-priority-badge ${p}" style="pointer-events:${name===myName?'auto':'none'}"
-        onclick="event.stopPropagation();cycleActPriority('${a.id}')">${p}</button>`;
+      const isMe = name === myName;
+      const badge = isMe
+        ? `<button class="act-priority-badge ${p}" onclick="event.stopPropagation();cycleActPriority('${a.id}')">${p}</button>`
+        : `<span class="act-priority-badge ${p}" style="pointer-events:none;cursor:default">${p}</span>`;
+
+      const myRating = isMe ? (((db.ratings || {})[myName] || {})[a.id] || 0) : 0;
+      const theirRating = !isMe ? (((db.ratings || {})[name] || {})[a.id] || 0) : 0;
+      const stars = isMe
+        ? `<div class="act-stars">${[1,2,3,4,5].map(n =>
+            `<button class="act-star${myRating >= n ? ' filled' : ''}" onclick="setActRating('${a.id}',${n})">★</button>`
+          ).join('')}<span class="act-star-label">${myRating ? myRating + '/5' : 'rate it'}</span></div>`
+        : theirRating
+          ? `<div class="act-stars">${'★'.repeat(theirRating)}${'☆'.repeat(5-theirRating)}</div>`
+          : '';
+
       return `<div class="summary-tag" style="border-color:${rgba(color,0.3)}">
         <span class="s-stage" style="color:${color}">${a.stage}</span>
-        ${a.name}${name === myName ? badge : ` <span class="act-priority-badge ${p}" style="pointer-events:none;cursor:default">${p}</span>`}
+        ${a.name} ${badge}
         <span class="s-time">${a.start}–${a.end}</span>
+        ${stars}
       </div>`;
     }).join('');
 
@@ -2439,9 +2526,9 @@ function removeListItem(id) {
   saveDB();
 }
 
-const PRIORITY_ORDER = ['M', 'S', 'C', 'W'];
-const PRIORITY_LABEL = { M: 'Must Have', S: 'Should Have', C: 'Could Have', W: "Won't Have" };
-const PRIORITY_CYCLE = { M: 'S', S: 'C', C: 'W', W: 'M' };
+const PRIORITY_ORDER = ['M', 'S', 'C'];
+const PRIORITY_LABEL = { M: 'Must Have', S: 'Should Have', C: 'Could Have' };
+const PRIORITY_CYCLE = { M: 'S', S: 'C', C: 'M' };
 
 function setListPriority(id) {
   const item = (db.list || {})[id];

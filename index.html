@@ -225,7 +225,18 @@
   .chip:hover  { border-color: #555; color: var(--text); }
   .chip.active { border-color: #fff; color: #fff; background: var(--border); }
 
+  .picked-chip.active {
+    border-color: var(--accent2);
+    color: #000;
+    background: var(--accent2);
+    font-weight: 700;
+  }
+
   .chip-dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
+
+  /* Day tabs and FILTER row only make sense on the Stage view. */
+  body:not([data-view="stage"]) #tabs .tab    { display: none; }
+  body:not([data-view="stage"]) #members-bar  { display: none; }
 
   /* ── CONTENT ─────────────────────────────────────────────────── */
   #content { padding: 14px 16px 40px; }
@@ -985,6 +996,9 @@
     <button class="chip active" id="chip-all" onclick="setFilter('all')">
       <span class="chip-dot" style="background:#666"></span>All
     </button>
+    <button class="chip picked-chip" id="chip-picked-only" onclick="togglePickedOnly()" title="Hide acts nobody picked">
+      <span class="chip-dot" style="background:#FFD166"></span>Picked only
+    </button>
   </div>
 </div>
 
@@ -1270,7 +1284,8 @@ let myName     = localStorage.getItem('fp_name')  || '';
 let myColor    = localStorage.getItem('fp_color') || '';
 let activeDay  = 'friday';
 let activeView = localStorage.getItem('fp_view') || 'home';
-let filterBy   = 'all';
+let filterBy        = 'all';
+let showOnlyPicked  = false;
 
 // ─── SYNC ─────────────────────────────────────────────────────────────────────
 const configured = typeof JSONBIN_BIN_ID !== 'undefined'
@@ -1584,6 +1599,7 @@ function setDay(day, el) {
 function setView(v) {
   activeView = v;
   localStorage.setItem('fp_view', v);
+  document.body.dataset.view = v;
   document.getElementById('vt-home').classList.toggle('active',    v === 'home');
   document.getElementById('vt-stage').classList.toggle('active',   v === 'stage');
   document.getElementById('vt-summary').classList.toggle('active', v === 'summary');
@@ -1594,6 +1610,11 @@ function setView(v) {
 
 function setFilter(name) {
   filterBy = name;
+  render();
+}
+
+function togglePickedOnly() {
+  showOnlyPicked = !showOnlyPicked;
   render();
 }
 
@@ -1643,6 +1664,9 @@ function renderMembersBar() {
     allChip.classList.remove('active');
   }
 
+  // picked-only chip
+  document.getElementById('chip-picked-only').classList.toggle('active', showOnlyPicked);
+
   const members = [...new Set(Object.values(db.marks).flat())];
   members.forEach(name => {
     const color   = colorOf(name);
@@ -1691,16 +1715,17 @@ function renderHomeView() {
 
 function renderStageView() {
   const day  = DAYS[activeDay];
-  const acts = filterBy === 'all'
+  let acts = filterBy === 'all'
     ? day.acts
     : day.acts.filter(a => (db.marks[a.id] || []).includes(filterBy));
+  if (showOnlyPicked) acts = acts.filter(a => (db.marks[a.id] || []).length > 0);
 
   const byStage = Object.fromEntries(day.stages.map(s => [s, []]));
   acts.forEach(a => { if (byStage[a.stage]) byStage[a.stage].push(a); });
 
   const cols = day.stages.map(stage => {
     const stageActs = byStage[stage].sort((a,b) => timeToMins(a.start) - timeToMins(b.start));
-    if (!stageActs.length && filterBy !== 'all') return '';
+    if (!stageActs.length && (filterBy !== 'all' || showOnlyPicked)) return '';
     const cards = stageActs.length
       ? stageActs.map(renderCard).join('')
       : '<div style="padding:8px 4px;font-size:10px;color:#2a2a2a">—</div>';

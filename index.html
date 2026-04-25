@@ -1782,6 +1782,7 @@ function renderHomeView() {
 
   document.getElementById('home-subscribe').innerHTML = subscribeCTA();
   renderInstallCTA();
+  updateCountdown();
 }
 
 function renderStageView() {
@@ -2310,6 +2311,7 @@ function updateCountdown() {
 }
 setInterval(updateCountdown, 1000);
 updateCountdown();
+window.addEventListener('pageshow', updateCountdown);
 
 loadDB().then(() => {
   if (myName && db.members[myName]) myColor = db.members[myName];

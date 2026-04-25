@@ -1417,6 +1417,7 @@ function applyPending(state) {
 // concurrent edits from other devices aren't clobbered.
 let saveTimer    = null;
 let saveInFlight = false;
+let deferredInstallPrompt = null;
 
 function saveDB() {
   if (!configured) {
@@ -2216,8 +2217,6 @@ function schedulePoll() {
 }
 
 // ─── INSTALL CTA ──────────────────────────────────────────────────────────────
-let deferredInstallPrompt = null;
-
 window.addEventListener('beforeinstallprompt', e => {
   e.preventDefault();
   deferredInstallPrompt = e;

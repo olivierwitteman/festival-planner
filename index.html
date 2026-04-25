@@ -1252,13 +1252,20 @@
     width: 100%;
     max-width: 420px;
   }
-  #act-modal-title {
+  #act-modal-name {
     font-family: 'Bebas Neue', sans-serif;
     font-size: 20px;
     letter-spacing: 3px;
     color: #fff;
     line-height: 1.1;
+    background: none;
+    border: none;
+    border-bottom: 1px solid var(--border);
+    outline: none;
+    width: 100%;
+    padding: 0 0 4px;
   }
+  #act-modal-name:focus { border-bottom-color: var(--accent); }
   #act-modal-meta {
     font-size: 10px;
     letter-spacing: 1px;
@@ -2229,11 +2236,11 @@ function openActModal(actId) {
   editingActId = actId;
   const act = findActById(actId);
   if (!act) return;
-  document.getElementById('act-modal-title').textContent = act.name;
+  document.getElementById('act-modal-name').value  = (db.actEdits[actId] || {}).name || act.name;
   document.getElementById('act-modal-meta').textContent  = `${act.stage} · ${act.start}–${act.end}`;
   document.getElementById('act-modal-notes').value = (db.actEdits[actId] || {}).notes || '';
   document.getElementById('act-modal-overlay').classList.add('open');
-  setTimeout(() => document.getElementById('act-modal-notes').focus(), 50);
+  setTimeout(() => document.getElementById('act-modal-name').focus(), 50);
 }
 
 function closeActModal(e) {
@@ -2244,10 +2251,13 @@ function closeActModal(e) {
 
 function saveActEdit() {
   if (!editingActId) return;
+  const act   = findActById(editingActId);
+  const name  = document.getElementById('act-modal-name').value.trim();
   const notes = document.getElementById('act-modal-notes').value.trim();
+  const edit  = { name: name === (act && act.name) ? '' : name, notes };
   db.actEdits = db.actEdits || {};
-  db.actEdits[editingActId] = { ...(db.actEdits[editingActId] || {}), notes };
-  pendingActEdits[editingActId] = { notes };
+  db.actEdits[editingActId] = { ...(db.actEdits[editingActId] || {}), ...edit };
+  pendingActEdits[editingActId] = edit;
   document.getElementById('act-modal-overlay').classList.remove('open');
   editingActId = null;
   render();
@@ -2311,8 +2321,8 @@ function renderCard(act) {
 
   return `<div class="act-card${isMarked?' marked':''}" ${style} onclick="toggleMark('${act.id}')">
     <div class="act-name">
-      ${act.name}
-      <button class="act-edit-btn" onclick="event.stopPropagation();openActModal('${act.id}')" title="Add notes">✎</button>
+      ${actName(act)}
+      <button class="act-edit-btn" onclick="event.stopPropagation();openActModal('${act.id}')" title="Edit act">✎</button>
     </div>
     <div class="act-time">${act.start}–${act.end}</div>
     ${scores}
@@ -2424,7 +2434,7 @@ function renderFlowView() {
       return `<div class="flow-act${isMarked ? ' marked' : ''}"
           style="left:${left}px;width:${width}px;background:${bg};border-color:${borderColor}"
           onclick="toggleMark('${act.id}')">
-        <div class="flow-act-name">${act.name}</div>
+        <div class="flow-act-name">${actName(act)}</div>
         ${width >= 90  ? `<div class="flow-act-time">${act.start}–${act.end}</div>` : ''}
         ${flowScores}
         ${width >= 36 && dots ? `<div class="act-dots" style="margin-top:auto">${dots}</div>` : ''}
@@ -2495,7 +2505,7 @@ function renderSummaryView() {
       const actNote = (db.actEdits[a.id] || {}).notes;
       return `<div class="summary-tag" style="border-color:${rgba(color,0.3)}">
         <span class="s-stage" style="color:${color}">${a.stage}</span>
-        ${a.name}
+        ${actName(a)}
         <span class="s-time">${a.start}–${a.end}</span>
         ${actNote ? `<div class="act-notes">${actNote}</div>` : ''}
         <div class="act-star-rows">
@@ -2532,6 +2542,11 @@ function relativeTime(t) {
 
 function activeLineup() {
   return (db.lineup && Object.keys(db.lineup).length) ? db.lineup : DAYS;
+}
+
+function actName(act) {
+  const custom = (db.actEdits[act.id] || {}).name;
+  return custom || act.name;
 }
 
 function findActById(actId) {
@@ -3030,7 +3045,7 @@ loadDB().then(() => {
 
 <div id="act-modal-overlay" onclick="closeActModal(event)">
   <div id="act-modal">
-    <div id="act-modal-title"></div>
+    <input id="act-modal-name" type="text" spellcheck="false" maxlength="80">
     <div id="act-modal-meta"></div>
     <textarea id="act-modal-notes" placeholder="Add notes, tips, friends to meet up with…" maxlength="500"></textarea>
     <div class="act-modal-actions">

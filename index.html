@@ -610,6 +610,55 @@
   }
   .home-steps strong { color: #fff; font-weight: 700; }
 
+  .countdown-heading {
+    font-size: 9px;
+    letter-spacing: 2px;
+    color: var(--muted);
+    text-transform: uppercase;
+    margin-top: 16px;
+  }
+  .countdown {
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
+    gap: 2px;
+    margin-top: 6px;
+  }
+  .countdown-unit {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    min-width: 50px;
+  }
+  .countdown-num {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 38px;
+    line-height: 1;
+    color: #fff;
+    letter-spacing: 1px;
+  }
+  .countdown-label {
+    font-size: 8px;
+    letter-spacing: 2px;
+    color: var(--muted);
+    text-transform: uppercase;
+    margin-top: 3px;
+  }
+  .countdown-sep {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 30px;
+    color: rgba(255,92,77,0.6);
+    padding: 0 2px;
+    line-height: 1.2;
+  }
+  .countdown-live {
+    font-size: 13px;
+    letter-spacing: 3px;
+    color: var(--accent2);
+    text-transform: uppercase;
+    padding: 10px 0 4px;
+  }
+
   /* ── MAP VIEW (per-act) ──────────────────────────────────────── */
   #map-help {
     font-size: 11px;
@@ -932,6 +981,8 @@
       <div class="home-hero-sub">
         Mark acts, find each other on-site, share what to pack, sync to your calendar — all live with the group.
       </div>
+      <div class="countdown-heading" id="countdown-heading">Kicks off in</div>
+      <div id="countdown" class="countdown"></div>
       <div class="home-hero-prompt" id="home-hero-prompt"></div>
     </div>
 
@@ -1034,7 +1085,15 @@ const PALETTE = [
   "#BFEF45", // lime
   "#FABED4", // pink
   "#469990", // teal
-  "#9A6324"  // brown
+  "#9A6324", // brown
+  "#FF6B9D", // rose
+  "#8B5CF6", // violet
+  "#34D399", // emerald
+  "#F59E0B", // amber
+  "#38BDF8", // sky
+  "#2DD4BF", // turquoise
+  "#FB923C", // peach
+  "#FCA5A5", // salmon
 ];
 
 // ─── LINEUP ───────────────────────────────────────────────────────────────────
@@ -2064,6 +2123,35 @@ function schedulePoll() {
     schedulePoll();
   }, currentPollMs());
 }
+
+function updateCountdown() {
+  const el      = document.getElementById('countdown');
+  const heading = document.getElementById('countdown-heading');
+  if (!el) return;
+  const now  = Date.now();
+  if (now >= FAST_POLL_END) {
+    el.style.display      = 'none';
+    heading.style.display = 'none';
+    return;
+  }
+  const diff = FAST_POLL_START - now;
+  if (diff <= 0) {
+    el.innerHTML = '<span class="countdown-live">Festival is live! 🎉</span>';
+    heading.style.display = 'none';
+    return;
+  }
+  const d   = Math.floor(diff / 86400000);
+  const h   = Math.floor((diff % 86400000) / 3600000);
+  const m   = Math.floor((diff % 3600000)  / 60000);
+  const s   = Math.floor((diff % 60000)    / 1000);
+  const pad = n => String(n).padStart(2, '0');
+  const sep = '<span class="countdown-sep">:</span>';
+  const unit = (n, label) =>
+    `<div class="countdown-unit"><span class="countdown-num">${n}</span><span class="countdown-label">${label}</span></div>`;
+  el.innerHTML = unit(d, 'days') + sep + unit(pad(h), 'hrs') + sep + unit(pad(m), 'min') + sep + unit(pad(s), 'sec');
+}
+setInterval(updateCountdown, 1000);
+updateCountdown();
 
 loadDB().then(() => {
   if (myName && db.members[myName]) myColor = db.members[myName];

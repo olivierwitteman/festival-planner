@@ -1659,7 +1659,7 @@ let myName     = localStorage.getItem('fp_name')  || '';
 let myColor    = localStorage.getItem('fp_color') || '';
 let activeDay  = 'friday';
 let activeView = localStorage.getItem('fp_view') || 'home';
-let filterBy        = 'all';
+let filterBy        = new Set();   // empty = show all; populated = show acts by any selected member
 let showOnlyPicked  = false;
 
 // ─── SYNC ─────────────────────────────────────────────────────────────────────
@@ -2097,7 +2097,13 @@ function setView(v) {
 }
 
 function setFilter(name) {
-  filterBy = name;
+  if (name === 'all') {
+    filterBy.clear();
+  } else if (filterBy.has(name)) {
+    filterBy.delete(name);
+  } else {
+    filterBy.add(name);
+  }
   render();
 }
 
@@ -2147,7 +2153,7 @@ function renderMembersBar() {
 
   // all-chip
   const allChip = document.getElementById('chip-all');
-  if (filterBy === 'all') {
+  if (filterBy.size === 0) {
     allChip.classList.add('active');
     allChip.style.cssText = '';
   } else {
@@ -2161,14 +2167,14 @@ function renderMembersBar() {
   members.forEach(name => {
     const color   = colorOf(name);
     const count   = Object.values(db.marks).filter(v => v.includes(name)).length;
-    const active  = filterBy === name;
+    const active  = filterBy.has(name);
     const btn     = document.createElement('button');
     btn.className = 'chip mchip' + (active ? ' active' : '');
     btn.style.borderColor = color;
     btn.style.color       = '#fff';
     if (active) btn.style.background = rgba(color, 0.2);
     btn.innerHTML = `<span class="chip-dot" style="background:${color}"></span>${name} <span style="opacity:0.55">(${count})</span>`;
-    btn.onclick   = () => setFilter(filterBy === name ? 'all' : name);
+    btn.onclick   = () => setFilter(name);
     bar.appendChild(btn);
   });
 }
@@ -2207,9 +2213,9 @@ function renderHomeView() {
 
 function renderStageView() {
   const day  = activeLineup()[activeDay];
-  let acts = filterBy === 'all'
+  let acts = filterBy.size === 0
     ? day.acts
-    : day.acts.filter(a => (db.marks[a.id] || []).includes(filterBy));
+    : day.acts.filter(a => (db.marks[a.id] || []).some(n => filterBy.has(n)));
   if (showOnlyPicked) acts = acts.filter(a => (db.marks[a.id] || []).length > 0);
 
   const byStage = Object.fromEntries(day.stages.map(s => [s, []]));
@@ -2217,7 +2223,7 @@ function renderStageView() {
 
   const cols = day.stages.map(stage => {
     const stageActs = byStage[stage].sort((a,b) => timeToMins(a.start) - timeToMins(b.start));
-    if (!stageActs.length && (filterBy !== 'all' || showOnlyPicked)) return '';
+    if (!stageActs.length && (filterBy.size > 0 || showOnlyPicked)) return '';
     const cards = stageActs.length
       ? stageActs.map(renderCard).join('')
       : '<div style="padding:8px 4px;font-size:10px;color:#2a2a2a">—</div>';
@@ -2377,9 +2383,9 @@ const FLOW_LABEL  = 80;    // px width of sticky stage-name column
 
 function renderFlowView() {
   const day  = activeLineup()[activeDay];
-  let acts   = filterBy === 'all'
+  let acts   = filterBy.size === 0
     ? day.acts
-    : day.acts.filter(a => (db.marks[a.id] || []).includes(filterBy));
+    : day.acts.filter(a => (db.marks[a.id] || []).some(n => filterBy.has(n)));
   if (showOnlyPicked) acts = acts.filter(a => (db.marks[a.id] || []).length > 0);
 
   const totalW = Math.round((FLOW_MAX_M - FLOW_MIN_M) * PX_PER_MIN);

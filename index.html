@@ -997,6 +997,29 @@
     color: var(--muted);
     align-self: center;
   }
+  #home-share {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  #home-share-btn {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 10px 16px;
+    color: var(--muted);
+    font-family: inherit;
+    font-size: 11px;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    cursor: pointer;
+  }
+  #home-share-btn:hover { color: var(--text); border-color: #555; }
+  #home-share-status {
+    font-size: 10px;
+    letter-spacing: 1px;
+    color: var(--muted);
+  }
 
   /* ── BRING LIST ──────────────────────────────────────────────── */
   #list-add {
@@ -1379,6 +1402,11 @@
     </div>
 
     <div class="home-stats" id="home-stats"></div>
+
+    <div id="home-share">
+      <button id="home-share-btn" onclick="shareAppLink()">🔗 Invite friends to this planner</button>
+      <span id="home-share-status"></span>
+    </div>
 
     <div id="home-subscribe"></div>
     <div id="home-install"></div>
@@ -2737,6 +2765,50 @@ async function copyMapLink(url) {
 
 function setMapShareStatus(msg, clearAfterMs) {
   const el = document.getElementById('map-share-status');
+  if (!el) return;
+  el.textContent = msg;
+  if (clearAfterMs) setTimeout(() => { if (el.textContent === msg) el.textContent = ''; }, clearAfterMs);
+}
+
+async function shareAppLink() {
+  const url = location.origin + location.pathname;
+  const members = Object.keys(db.members || {});
+  const pickCount = Object.keys(db.marks || {}).length;
+
+  let text;
+  if (myName && members.length > 1) {
+    const others = members.filter(n => n !== myName);
+    const nameList = others.slice(0, 2).join(', ') + (others.length > 2 ? ` +${others.length - 2}` : '');
+    text = `🎪 Join ${myName} and ${nameList} planning Best Kept Secret '26 — mark acts, share your on-site location, and coordinate what to bring.`;
+  } else if (myName) {
+    text = `🎪 ${myName} is planning Best Kept Secret '26 — join the group to pick acts, find each other on-site, and stay in sync.`;
+  } else {
+    text = `🎪 Plan Best Kept Secret '26 with your friends — mark acts, share your live location on-site, and coordinate what to bring.`;
+  }
+
+  if (navigator.share) {
+    try {
+      await navigator.share({ title: 'BKS \'26 Planner', text, url });
+      setHomeShareStatus('Shared!', 2500);
+    } catch (e) {
+      if (e.name !== 'AbortError') await copyAppLink(url);
+    }
+  } else {
+    await copyAppLink(url);
+  }
+}
+
+async function copyAppLink(url) {
+  try {
+    await navigator.clipboard.writeText(url);
+    setHomeShareStatus('Link copied!', 2500);
+  } catch {
+    setHomeShareStatus('Could not copy link', 3000);
+  }
+}
+
+function setHomeShareStatus(msg, clearAfterMs) {
+  const el = document.getElementById('home-share-status');
   if (!el) return;
   el.textContent = msg;
   if (clearAfterMs) setTimeout(() => { if (el.textContent === msg) el.textContent = ''; }, clearAfterMs);

@@ -1489,7 +1489,7 @@
   <div id="splash-logo">BKS<span>'26</span></div>
   <div id="splash-sub">BEST KEPT SECRET</div>
   <div class="splash-dots"><span></span><span></span><span></span></div>
-  <div id="splash-msg">LOADING LINEUP…</div>
+  <div id="splash-msg">SYNCING GROUP DATA…</div>
 </div>
 
 <div id="header">
@@ -2305,7 +2305,6 @@ function textColor(hex) {
 
 // ─── RENDER ───────────────────────────────────────────────────────────────────
 function render() {
-  document.getElementById('splash').classList.add('hidden');
   document.getElementById('loading').style.display = 'none';
   renderExistingMembers();
   renderMembersBar();
@@ -3293,6 +3292,7 @@ window.addEventListener('pageshow', updateCountdown);
 
 loadDB().then(() => {
   if (myName && db.members[myName]) myColor = db.members[myName];
+  document.getElementById('splash').classList.add('hidden');
   render();
   schedulePoll();
 });

@@ -317,6 +317,7 @@
   .act-card.marked .act-name { color: #fff; }
 
   .act-time { font-size: 10px; color: var(--muted); margin-top: 3px; }
+  .clash-badge { font-size: 9px; color: #F59E0B; letter-spacing: 0.5px; margin-top: 2px; }
 
   .act-dots { display: flex; gap: 3px; margin-top: 6px; flex-wrap: wrap; }
 
@@ -824,6 +825,7 @@
     transition: opacity 0.12s, filter 0.12s;
   }
   .flow-act:hover { filter: brightness(1.15); }
+  .flow-act.clash { border-color: #F59E0B !important; }
   .flow-act-name {
     font-size: 9px;
     font-weight: 700;
@@ -2397,12 +2399,18 @@ function renderCard(act) {
   const notes = (db.actEdits[act.id] || {}).notes;
   const notesHtml = notes ? `<div class="act-notes">${notes}</div>` : '';
 
+  const clashes = isMarked ? getMyClashes(act.id) : [];
+  const clashHtml = clashes.length
+    ? `<div class="clash-badge">⚡ ${clashes.map(a => actName(a)).join(', ')}</div>`
+    : '';
+
   return `<div class="act-card${isMarked?' marked':''}" ${style} onclick="toggleMark('${act.id}')">
     <div class="act-name">
       ${actName(act)}
       <button class="act-edit-btn" onclick="event.stopPropagation();openActModal('${act.id}')" title="Edit act">✎</button>
     </div>
     <div class="act-time">${act.start}–${act.end}</div>
+    ${clashHtml}
     ${scores}
     ${notesHtml}
     ${dots ? `<div class="act-dots">${dots}</div>` : ''}
@@ -2487,13 +2495,14 @@ function renderFlowView() {
     const blocks = stageActs.map(act => {
       const members  = db.marks[act.id] || [];
       const isMarked = myName && members.includes(myName);
+      const clashes  = isMarked ? getMyClashes(act.id) : [];
       const sM = timeToMins(act.start);
       const eM = timeToMins(act.end);
       const left  = Math.round((sM - FLOW_MIN_M) * PX_PER_MIN);
       const width = Math.max(Math.round((eM - sM) * PX_PER_MIN) - 2, 4);
 
       const bg          = isMarked ? rgba(mc, 0.2) : (members.length ? 'rgba(255,255,255,0.05)' : 'var(--surface)');
-      const borderColor = isMarked ? mc             : (members.length ? '#333' : 'var(--border)');
+      const borderColor = clashes.length ? '#F59E0B' : (isMarked ? mc : (members.length ? '#333' : 'var(--border)'));
 
       const dots = members.slice(0, 5).map(n => {
         const c = colorOf(n);
@@ -2509,7 +2518,7 @@ function renderFlowView() {
           </div>`
         : '';
 
-      return `<div class="flow-act${isMarked ? ' marked' : ''}"
+      return `<div class="flow-act${isMarked ? ' marked' : ''}${clashes.length ? ' clash' : ''}"
           style="left:${left}px;width:${width}px;background:${bg};border-color:${borderColor}"
           onclick="toggleMark('${act.id}')">
         <div class="flow-act-name">${actName(act)}</div>
@@ -2625,6 +2634,28 @@ function activeLineup() {
 function actName(act) {
   const custom = (db.actEdits[act.id] || {}).name;
   return custom || act.name;
+}
+
+function getMyClashes(actId) {
+  if (!myName) return [];
+  const myMarks = new Set(
+    Object.keys(db.marks).filter(id => (db.marks[id] || []).includes(myName))
+  );
+  if (!myMarks.has(actId)) return [];
+  const lineup = activeLineup();
+  let target = null, dayActs = null;
+  for (const day of Object.values(lineup)) {
+    const found = day.acts.find(a => a.id === actId);
+    if (found) { target = found; dayActs = day.acts; break; }
+  }
+  if (!target) return [];
+  const tS = timeToMins(target.start), tE = timeToMins(target.end);
+  return dayActs.filter(a =>
+    a.id !== actId &&
+    myMarks.has(a.id) &&
+    tS < timeToMins(a.end) &&
+    timeToMins(a.start) < tE
+  );
 }
 
 function findActById(actId) {

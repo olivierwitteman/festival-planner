@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>BKS '26 — Best Kept Secret Planner</title>
 <meta name="description" content="Plan Best Kept Secret '26 with your friends. Mark acts, find each other on-site, share what to bring — all live with the group.">
 <meta name="theme-color" content="#FF5C4D">
@@ -434,6 +434,51 @@
     .stage-grid { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px; }
     #header h1  { font-size: 22px; }
     .tab        { padding: 5px 10px; }
+  }
+
+  /* ── PWA BOTTOM NAV ──────────────────────────────────────────── */
+  #bottom-nav { display: none; }
+
+  @media (display-mode: standalone) {
+    .view-toggle { display: none; }
+
+    #bottom-nav {
+      display: flex;
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      background: var(--surface);
+      border-top: 1px solid var(--border);
+      padding: 6px 4px env(safe-area-inset-bottom, 8px);
+      gap: 2px;
+      z-index: 200;
+      justify-content: space-around;
+    }
+
+    #bottom-nav .vtab {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 3px;
+      padding: 6px 2px;
+      border-radius: 8px;
+      border: none;
+      background: none;
+      color: var(--muted);
+      font-family: inherit;
+      font-size: 9px;
+      letter-spacing: 0.5px;
+      cursor: pointer;
+      transition: color 0.15s;
+    }
+    #bottom-nav .vtab .bn-icon { font-size: 18px; line-height: 1; }
+    #bottom-nav .vtab:hover { color: var(--text); }
+    #bottom-nav .vtab.active { color: var(--accent); }
+
+    /* push content above the fixed nav */
+    #content { padding-bottom: calc(70px + env(safe-area-inset-bottom, 0px)); }
   }
 
   /* ── BKS BRAND ───────────────────────────────────────────────── */
@@ -1370,12 +1415,12 @@
     <button class="tab"        onclick="setDay('saturday', this)">Sat 13/06</button>
     <button class="tab"        onclick="setDay('sunday',   this)">Sun 14/06</button>
     <div class="view-toggle">
-      <button class="vtab active" id="vt-home"    onclick="setView('home')">Home</button>
-      <button class="vtab"        id="vt-stage"   onclick="setView('stage')">Stage</button>
-      <button class="vtab"        id="vt-flow"    onclick="setView('flow')">Flow</button>
-      <button class="vtab"        id="vt-summary" onclick="setView('summary')">Summary</button>
-      <button class="vtab"        id="vt-map"     onclick="setView('map')">Map</button>
-      <button class="vtab"        id="vt-list"    onclick="setView('list')">Bring</button>
+      <button class="vtab active" id="vt-home"    data-vt="home"    onclick="setView('home')">Home</button>
+      <button class="vtab"        id="vt-stage"   data-vt="stage"   onclick="setView('stage')">Stage</button>
+      <button class="vtab"        id="vt-flow"    data-vt="flow"    onclick="setView('flow')">Flow</button>
+      <button class="vtab"        id="vt-summary" data-vt="summary" onclick="setView('summary')">Summary</button>
+      <button class="vtab"        id="vt-map"     data-vt="map"     onclick="setView('map')">Map</button>
+      <button class="vtab"        id="vt-list"    data-vt="list"    onclick="setView('list')">Bring</button>
     </div>
   </div>
 
@@ -2115,12 +2160,9 @@ function setView(v) {
   activeView = v;
   localStorage.setItem('fp_view', v);
   document.body.dataset.view = v;
-  document.getElementById('vt-home').classList.toggle('active',    v === 'home');
-  document.getElementById('vt-stage').classList.toggle('active',   v === 'stage');
-  document.getElementById('vt-flow').classList.toggle('active',    v === 'flow');
-  document.getElementById('vt-summary').classList.toggle('active', v === 'summary');
-  document.getElementById('vt-map').classList.toggle('active',     v === 'map');
-  document.getElementById('vt-list').classList.toggle('active',    v === 'list');
+  document.querySelectorAll('[data-vt]').forEach(el => {
+    el.classList.toggle('active', el.dataset.vt === v);
+  });
   render();
 }
 
@@ -3132,5 +3174,14 @@ loadDB().then(() => {
     </div>
   </div>
 </div>
+
+<nav id="bottom-nav">
+  <button class="vtab" data-vt="home"    onclick="setView('home')">   <span class="bn-icon">🏠</span>Home</button>
+  <button class="vtab" data-vt="stage"   onclick="setView('stage')">  <span class="bn-icon">🎤</span>Stage</button>
+  <button class="vtab" data-vt="flow"    onclick="setView('flow')">   <span class="bn-icon">🗓️</span>Flow</button>
+  <button class="vtab" data-vt="summary" onclick="setView('summary')"><span class="bn-icon">📋</span>Summary</button>
+  <button class="vtab" data-vt="map"     onclick="setView('map')">    <span class="bn-icon">📍</span>Map</button>
+  <button class="vtab" data-vt="list"    onclick="setView('list')">   <span class="bn-icon">🛍️</span>Bring</button>
+</nav>
 </body>
 </html>

@@ -169,12 +169,22 @@
   /* ── TABS ────────────────────────────────────────────────────── */
   #tabs {
     display: flex;
-    gap: 0;
-    align-items: center;
+    flex-direction: column;
+  }
+
+  .view-toggle {
+    display: flex;
+    gap: 2px;
+    padding: 3px 0;
     border-bottom: 1px solid var(--border);
   }
 
   /* Day selector — underline segmented style */
+  #day-tabs {
+    display: flex;
+    border-bottom: 1px solid var(--border);
+  }
+
   .tab {
     background: none;
     border: none;
@@ -190,8 +200,6 @@
   }
   .tab:hover { color: var(--text); }
   .tab.active { color: #fff; border-bottom-color: var(--accent); font-weight: 700; }
-
-  .view-toggle { margin-left: auto; display: flex; gap: 2px; padding: 2px 0; }
 
   .vtab {
     background: none;
@@ -246,8 +254,8 @@
 
   .chip-dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
 
-  /* Day tabs and FILTER row only make sense on Stage/Flow. */
-  body:not([data-view="stage"]):not([data-view="flow"]) #tabs .tab    { display: none; }
+  /* Day tabs and filter row only make sense on Stage/Flow. */
+  body:not([data-view="stage"]):not([data-view="flow"]) #day-tabs     { display: none; }
   body:not([data-view="stage"]):not([data-view="flow"]) #members-bar  { display: none; }
 
   /* ── CONTENT ─────────────────────────────────────────────────── */
@@ -1404,9 +1412,6 @@
   </div>
 
   <div id="tabs">
-    <button class="tab active" onclick="setDay('friday',   this)">Fri</button>
-    <button class="tab"        onclick="setDay('saturday', this)">Sat</button>
-    <button class="tab"        onclick="setDay('sunday',   this)">Sun</button>
     <div class="view-toggle">
       <button class="vtab active" id="vt-home"    data-vt="home"    onclick="setView('home')">Home</button>
       <button class="vtab"        id="vt-stage"   data-vt="stage"   onclick="setView('stage')">Stage</button>
@@ -1414,6 +1419,11 @@
       <button class="vtab"        id="vt-summary" data-vt="summary" onclick="setView('summary')">Summary</button>
       <button class="vtab"        id="vt-map"     data-vt="map"     onclick="setView('map')">Map</button>
       <button class="vtab"        id="vt-list"    data-vt="list"    onclick="setView('list')">Bring</button>
+    </div>
+    <div id="day-tabs">
+      <button class="tab active" onclick="setDay('friday',   this)">Fri 12/06</button>
+      <button class="tab"        onclick="setDay('saturday', this)">Sat 13/06</button>
+      <button class="tab"        onclick="setDay('sunday',   this)">Sun 14/06</button>
     </div>
   </div>
 

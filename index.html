@@ -371,6 +371,7 @@
   .act-card.marked .act-name { color: #fff; }
 
   .act-time { font-size: 10px; color: var(--muted); margin-top: 3px; }
+  .act-genre { font-size: 9px; color: var(--muted); letter-spacing: 0.8px; margin-top: 1px; text-transform: uppercase; opacity: 0.7; }
   .clash-badge { font-size: 9px; color: #F59E0B; letter-spacing: 0.5px; margin-top: 2px; }
 
   .act-dots { display: flex; gap: 3px; margin-top: 6px; flex-wrap: wrap; }
@@ -2510,7 +2511,7 @@ function renderCard(act) {
       ${actName(act)}
       <button class="act-edit-btn" onclick="event.stopPropagation();openActModal('${act.id}')" title="Edit act">✎</button>
     </div>
-    <div class="act-time">${act.start}–${act.end}</div>
+    <div class="act-time">${act.start}–${act.end}${act.genre ? ` · <span class="act-genre">${act.genre}</span>` : ''}</div>
     ${clashHtml}
     ${scores}
     ${notesHtml}
@@ -2624,6 +2625,7 @@ function renderFlowView() {
           onclick="toggleMark('${act.id}')">
         <div class="flow-act-name">${actName(act)}</div>
         ${width >= 90  ? `<div class="flow-act-time">${act.start}–${act.end}</div>` : ''}
+        ${width >= 110 && act.genre ? `<div class="act-genre" style="margin-top:1px">${act.genre}</div>` : ''}
         ${flowScores}
         ${width >= 36 && dots ? `<div class="act-dots" style="margin-top:auto">${dots}</div>` : ''}
       </div>`;

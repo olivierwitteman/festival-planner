@@ -1490,7 +1490,7 @@
   <div id="splash-logo">BKS<span>'26</span></div>
   <div id="splash-sub">BEST KEPT SECRET</div>
   <div class="splash-dots"><span></span><span></span><span></span></div>
-  <div id="splash-msg">SYNCING GROUP DATA…</div>
+  <div id="splash-msg">CONNECTING…</div>
 </div>
 
 <div id="header">
@@ -1741,6 +1741,15 @@ const configured = typeof JSONBIN_BIN_ID !== 'undefined'
 function syncUI(state, label) {
   document.getElementById('sync-dot').className   = 'sync-dot' + (state !== 'ok' ? ' ' + state : '');
   document.getElementById('sync-label').textContent = label;
+  const splash = document.getElementById('splash');
+  if (splash && !splash.classList.contains('hidden')) {
+    const msgs = {
+      syncing: 'FETCHING GROUP DATA…',
+      offline: 'OFFLINE — LOADING FROM CACHE',
+      ok:      'READY',
+    };
+    document.getElementById('splash-msg').textContent = msgs[state] || label.toUpperCase();
+  }
 }
 
 async function loadDB() {

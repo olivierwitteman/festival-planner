@@ -1756,7 +1756,7 @@ function syncUI(state, label) {
     _splashCycle = setInterval(() => {
       i = (i + 1) % SPLASH_KEYS.length;
       splashMsg.textContent = `FETCHING ${SPLASH_KEYS[i].toUpperCase()}…`;
-    }, 200);
+    }, 1000);
   } else {
     splashMsg.textContent = state === 'ok' ? 'READY' : 'OFFLINE — LOADING FROM CACHE';
   }

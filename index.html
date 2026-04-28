@@ -1669,173 +1669,59 @@ const PALETTE = [
   "#FCA5A5", // salmon
 ];
 
-// ─── LINEUP ───────────────────────────────────────────────────────────────────
-const DAYS = {
-  friday: {
-    label: "Friday 12/06",
-    stages: ["ONE","TWO","The Secret","The Floor","The Casbah","Not Nothing","The Shore"],
-    acts: [
-      {id:"f1", name:"DJ St. Paul",                               stage:"The Floor",    start:"14:00",end:"17:00", genre:"indie dance DJ"},
-      {id:"f2", name:"Åo",                                        stage:"The Secret",   start:"14:30",end:"15:30", genre:"electro-pop / Afropop"},
-      {id:"f3", name:"NewDad",                                    stage:"TWO",          start:"15:30",end:"16:15", genre:"shoegaze / dream pop"},
-      {id:"f4", name:"Croithe",                                   stage:"The Casbah",   start:"15:15",end:"16:00", genre:"post-punk"},
-      {id:"f5", name:"Fada Jep",                                  stage:"The Shore",    start:"16:00",end:"19:00", genre:"reggae / dub"},
-      {id:"f6", name:"Femi Kuti & The Positive Force",            stage:"ONE",          start:"16:15",end:"17:15", genre:"Afrobeat"},
-      {id:"f7", name:"Leoniden",                                  stage:"The Secret",   start:"16:15",end:"17:00", genre:"indie pop"},
-      {id:"f8", name:"Rimini Express (Vinyl Only Italo Set)",     stage:"The Floor",    start:"17:00",end:"18:00", genre:"italo disco"},
-      {id:"f9", name:"Sudan Archives",                            stage:"TWO",          start:"17:15",end:"18:15", genre:"alt R&B"},
-      {id:"f10",name:"Pacifica",                                  stage:"The Casbah",   start:"16:45",end:"17:30", genre:"indie rock"},
-      {id:"f11",name:"Humanistisch Verbond - Analoog Algoritmes", stage:"Not Nothing",  start:"16:45",end:"17:30", genre:"talk"},
-      {id:"f12",name:"MAVI",                                      stage:"The Secret",   start:"18:00",end:"19:00", genre:"hip-hop"},
-      {id:"f13",name:"Curtis Harding",                            stage:"ONE",          start:"18:15",end:"19:15", genre:"soul"},
-      {id:"f14",name:"Elmer",                                     stage:"The Casbah",   start:"18:15",end:"19:00", genre:"rap / cabaret"},
-      {id:"f15",name:"TBA",                                       stage:"Not Nothing",  start:"17:45",end:"18:30"},
-      {id:"f16",name:"Aram Mukanay B2B Deodaat",                  stage:"Not Nothing",  start:"18:30",end:"20:00", genre:"disco / house"},
-      {id:"f17",name:"Bibtiana: music from Île Maurice",          stage:"The Shore",    start:"19:00",end:"21:00", genre:"sega / world music"},
-      {id:"f18",name:"Kaat van Stralen (DJ Set)",                 stage:"The Floor",    start:"19:00",end:"20:00", genre:"punk / indie DJ"},
-      {id:"f19",name:"Amaarae",                                   stage:"TWO",          start:"19:15",end:"20:15", genre:"Afropop / R&B"},
-      {id:"f20",name:"Shady Nasty",                               stage:"The Casbah",   start:"19:45",end:"20:30", genre:"post-punk / hip-hop"},
-      {id:"f21",name:"Model/Actriz",                              stage:"The Secret",   start:"20:00",end:"21:00", genre:"dance-punk"},
-      {id:"f22",name:"De La Soul",                                stage:"ONE",          start:"20:15",end:"21:15", genre:"hip-hop"},
-      {id:"f23",name:"KINETIKS",                                  stage:"Not Nothing",  start:"20:00",end:"22:00", genre:"electronic / dance"},
-      {id:"f24",name:"Mr. Cutts",                                 stage:"The Floor",    start:"21:00",end:"22:00", genre:"hip-hop / soul"},
-      {id:"f25",name:"Blood Incantation",                         stage:"TWO",          start:"21:15",end:"22:15", genre:"death metal"},
-      {id:"f26",name:"Militarie Gun",                             stage:"The Casbah",   start:"21:15",end:"22:00", genre:"melodic hardcore"},
-      {id:"f27",name:"DJ Tracksuit",                              stage:"The Shore",    start:"21:00",end:"23:00", genre:"afro disco / house"},
-      {id:"f28",name:"Ata Kak",                                   stage:"The Secret",   start:"22:00",end:"23:00", genre:"hiplife / highlife"},
-      {id:"f29",name:"Jack White",                                stage:"ONE",          start:"22:30",end:"00:00", genre:"blues rock"},
-      {id:"f30",name:"Alice Olsthoorn",                           stage:"The Floor",    start:"22:30",end:"23:30", genre:"hyperpop / club"},
-      {id:"f31",name:"Swordes",                                   stage:"The Casbah",   start:"22:45",end:"23:30", genre:"synth-pop"},
-      {id:"f32",name:"Mavochi b2b DIEDE",                         stage:"Not Nothing",  start:"22:00",end:"00:00", genre:"house / techno"},
-      {id:"f33",name:"Cami Layé Okùn",                            stage:"The Shore",    start:"23:00",end:"00:30", genre:"Afro-Latin / Cuban DJ"},
-      {id:"f34",name:"MEROL",                                     stage:"The Secret",   start:"23:45",end:"00:45", genre:"synth-pop"},
-      {id:"f35",name:"Mula",                                      stage:"TWO",          start:"00:00",end:"01:00", genre:"Dutch trap"},
-      {id:"f36",name:"Ofra",                                      stage:"The Floor",    start:"01:00",end:"02:00", genre:"wave / electro DJ"},
-      {id:"f37",name:"supermodel*",                               stage:"The Casbah",   start:"00:15",end:"01:00", genre:"lo-fi indie"},
-      {id:"f38",name:"Doppelgang",                                stage:"Not Nothing",  start:"00:00",end:"02:00", genre:"house / acid"},
-      {id:"f39",name:"Susobrino",                                 stage:"The Shore",    start:"00:30",end:"02:00", genre:"Latin electronic"},
-      {id:"f40",name:"Indie Gloria",                              stage:"The Secret",   start:"01:00",end:"02:30", genre:"indie DJ"},
-      {id:"f41",name:"Tramhaus (DJ Set)",                         stage:"The Casbah",   start:"01:00",end:"04:00", genre:"post-punk DJ"},
-      {id:"f42",name:"Sedef Adasï",                               stage:"Not Nothing",  start:"02:00",end:"04:00", genre:"house / techno"},
-      {id:"f43",name:"Iliassopdebeat",                            stage:"The Floor",    start:"02:30",end:"04:00", genre:"trap / hip-hop"},
-    ]
-  },
-  saturday: {
-    label: "Saturday 13/06",
-    stages: ["ONE","TWO","The Secret","The Floor","The Casbah","Not Nothing","The Shore"],
-    acts: [
-      {id:"s1", name:"mark william lewis",                        stage:"TWO",          start:"12:00",end:"12:45", genre:"indie folk / dream pop"},
-      {id:"s2", name:"DJ St. Paul",                               stage:"The Floor",    start:"12:00",end:"13:30", genre:"indie dance DJ"},
-      {id:"s3", name:"Bruno Berle",                               stage:"The Casbah",   start:"12:15",end:"13:00", genre:"Brazilian folk / MPB"},
-      {id:"s4", name:"Hiqpy",                                     stage:"TWO",          start:"13:15",end:"14:00", genre:"indie rock"},
-      {id:"s5", name:"Madra Salach",                              stage:"The Secret",   start:"13:00",end:"13:45", genre:"alt-folk"},
-      {id:"s6", name:"Katayoun",                                  stage:"The Floor",    start:"13:30",end:"14:30", genre:"Persian DJ / world music"},
-      {id:"s7", name:"Any Young Mechanic",                        stage:"The Casbah",   start:"13:45",end:"14:30", genre:"art folk"},
-      {id:"s8", name:"Naïka",                                     stage:"ONE",          start:"14:00",end:"14:45", genre:"R&B / global pop"},
-      {id:"s9", name:"De Correspondent - Rob Wijnberg",           stage:"Not Nothing",  start:"14:00",end:"14:45", genre:"talk"},
-      {id:"s10",name:"Weval (live)",                              stage:"TWO",          start:"14:45",end:"15:45", genre:"electronica"},
-      {id:"s11",name:"Maddie Ashman",                             stage:"The Secret",   start:"14:30",end:"15:15", genre:"art pop"},
-      {id:"s12",name:"Grote Geelstaart",                          stage:"The Casbah",   start:"15:15",end:"16:00", genre:"noise rock"},
-      {id:"s13",name:"Zo Opgelost",                               stage:"Not Nothing",  start:"15:00",end:"15:45", genre:"indie rock"},
-      {id:"s14",name:"Sef",                                       stage:"ONE",          start:"15:45",end:"16:45", genre:"hip-hop"},
-      {id:"s15",name:"Madra Salach (mostly Irish DJ set)",        stage:"The Floor",    start:"15:00",end:"16:00", genre:"Irish folk DJ"},
-      {id:"s16",name:"Sorry",                                     stage:"The Secret",   start:"16:00",end:"16:45", genre:"indie rock"},
-      {id:"s17",name:"Aldous Harding",                            stage:"TWO",          start:"16:45",end:"17:45", genre:"indie folk"},
-      {id:"s18",name:"Etta Marcus",                               stage:"The Casbah",   start:"16:45",end:"17:30", genre:"indie rock"},
-      {id:"s19",name:"De Correspondent",                          stage:"Not Nothing",  start:"16:00",end:"16:45", genre:"talk"},
-      {id:"s20",name:"Disco Horizontes",                          stage:"The Shore",    start:"16:00",end:"19:00", genre:"disco / house DJ"},
-      {id:"s21",name:"Alle Geschiedenis Ooit",                    stage:"Not Nothing",  start:"17:00",end:"17:45", genre:"talk"},
-      {id:"s22",name:"Hayley Williams",                           stage:"ONE",          start:"17:45",end:"18:45", genre:"pop / art pop"},
-      {id:"s23",name:"Radio Free Alice",                          stage:"The Secret",   start:"17:45",end:"18:30", genre:"post-punk"},
-      {id:"s24",name:"Crows",                                     stage:"The Casbah",   start:"18:15",end:"19:00", genre:"post-punk"},
-      {id:"s25",name:"Guylian",                                   stage:"Not Nothing",  start:"17:45",end:"20:00", genre:"indie pop"},
-      {id:"s26",name:"Ko Kliko",                                  stage:"The Floor",    start:"18:00",end:"19:00", genre:"electroclash / indie"},
-      {id:"s27",name:"Nation of Language",                        stage:"TWO",          start:"18:45",end:"19:45", genre:"synth-pop"},
-      {id:"s28",name:"Midrift",                                   stage:"The Casbah",   start:"19:45",end:"20:30", genre:"shoegaze"},
-      {id:"s29",name:"Wolf Alice",                                stage:"ONE",          start:"19:45",end:"20:45", genre:"indie rock"},
-      {id:"s30",name:"Tropical Fuck Storm",                       stage:"The Secret",   start:"19:30",end:"20:30", genre:"art punk"},
-      {id:"s31",name:"25 Years Of Eskimo Recordings (Nadiem Shah)",stage:"The Floor",  start:"19:30",end:"20:30", genre:"indie dance DJ"},
-      {id:"s32",name:"TBA",                                       stage:"The Shore",    start:"19:00",end:"21:00"},
-      {id:"s33",name:"Tramhaus",                                  stage:"TWO",          start:"20:45",end:"21:45", genre:"post-punk"},
-      {id:"s34",name:"JUUL",                                      stage:"Not Nothing",  start:"20:00",end:"22:00", genre:"pop"},
-      {id:"s35",name:"GHOSTWOMAN",                                stage:"The Casbah",   start:"21:15",end:"22:00", genre:"psych rock"},
-      {id:"s36",name:"The Zawose Queens",                         stage:"The Secret",   start:"21:30",end:"22:30", genre:"Tanzanian folk / electronic"},
-      {id:"s37",name:"Ineffekt",                                  stage:"The Floor",    start:"21:00",end:"22:00", genre:"techno / electro"},
-      {id:"s38",name:"Kebra Ethiopia Soundsystem",                stage:"The Shore",    start:"21:00",end:"00:00", genre:"roots reggae"},
-      {id:"s39",name:"Nick Cave & The Bad Seeds",                 stage:"ONE",          start:"22:00",end:"00:00", genre:"art rock"},
-      {id:"s40",name:"OG Karin",                                  stage:"Not Nothing",  start:"22:00",end:"00:00", genre:"hip-hop"},
-      {id:"s41",name:"Kumo 99",                                   stage:"The Casbah",   start:"22:45",end:"23:30", genre:"breakbeat / industrial"},
-      {id:"s42",name:"BCUC",                                      stage:"The Secret",   start:"23:30",end:"00:30", genre:"Afro-psychedelic"},
-      {id:"s43",name:"Nymfo B2B Zohar",                           stage:"The Floor",    start:"23:00",end:"00:00", genre:"drum & bass"},
-      {id:"s44",name:"Surusinghe",                                stage:"Not Nothing",  start:"00:00",end:"02:00", genre:"world music"},
-      {id:"s45",name:"Bony Fly",                                  stage:"The Shore",    start:"00:00",end:"02:00", genre:"world music / funk"},
-      {id:"s46",name:"Job Jobse",                                 stage:"TWO",          start:"00:00",end:"01:00", genre:"deep house"},
-      {id:"s47",name:"Dame Area",                                 stage:"The Casbah",   start:"00:15",end:"01:00", genre:"industrial / EBM"},
-      {id:"s48",name:"Lucky Done Gone",                           stage:"The Secret",   start:"01:30",end:"04:00", genre:"house / techno"},
-      {id:"s49",name:"Ajuma",                                     stage:"The Floor",    start:"01:00",end:"02:00", genre:"Afrobeat / disco house"},
-      {id:"s50",name:"MEROL (DJ Debut)",                          stage:"The Casbah",   start:"01:00",end:"02:00", genre:"synth-pop DJ"},
-      {id:"s51",name:"Slimfit",                                   stage:"Not Nothing",  start:"02:00",end:"04:00", genre:"Latin electronic / rave"},
-      {id:"s52",name:"Mia Koden",                                 stage:"The Shore",    start:"02:00",end:"04:00", genre:"dubstep / bass"},
-      {id:"s53",name:"The Great Indie Dance Bake Off (DJ St. Paul B2B Riptide)", stage:"The Floor", start:"02:00",end:"04:00", genre:"indie dance DJ"},
-      {id:"s54",name:"Here's The Thing DJ Set",                   stage:"The Casbah",   start:"02:00",end:"04:00", genre:"indie DJ"},
-    ]
-  },
-  sunday: {
-    label: "Sunday 14/06",
-    stages: ["ONE","TWO","The Secret","The Floor","The Casbah","Not Nothing","The Shore"],
-    acts: [
-      {id:"su1", name:"Σtella",                                   stage:"TWO",          start:"12:00",end:"12:45", genre:"indie pop"},
-      {id:"su2", name:"DJ St. Paul",                              stage:"The Floor",    start:"12:00",end:"14:00", genre:"indie dance DJ"},
-      {id:"su3", name:"Apichat Pakwan",                           stage:"The Casbah",   start:"12:00",end:"12:45", genre:"molam / electronic"},
-      {id:"su4", name:"Dressed Like Boys",                        stage:"The Secret",   start:"12:45",end:"13:30", genre:"indie folk / pop"},
-      {id:"su5", name:"DYGL",                                     stage:"The Casbah",   start:"13:15",end:"14:00", genre:"indie rock"},
-      {id:"su6", name:"Anna von Hausswolff",                      stage:"TWO",          start:"13:15",end:"14:15", genre:"gothic rock / organ"},
-      {id:"su7", name:"Mên An Tol",                               stage:"The Secret",   start:"14:15",end:"15:00", genre:"folk rock"},
-      {id:"su8", name:"Sheyma (Live)",                            stage:"The Floor",    start:"14:00",end:"14:45", genre:"Arabic alternative"},
-      {id:"su9", name:"Jungle By Night",                          stage:"ONE",          start:"14:15",end:"15:00", genre:"Afrobeat / jazz"},
-      {id:"su10",name:"Servo",                                    stage:"The Casbah",   start:"14:30",end:"15:15", genre:"post-punk"},
-      {id:"su11",name:"Sophie Straat",                            stage:"TWO",          start:"15:00",end:"15:45", genre:"Dutch indie pop"},
-      {id:"su12",name:"KROON (Kypski Live Set)",                  stage:"The Floor",    start:"15:15",end:"16:15", genre:"bass / electronic"},
-      {id:"su13",name:"TBA",                                      stage:"ONE",          start:"15:45",end:"16:45"},
-      {id:"su14",name:"Skullcrusher",                             stage:"The Secret",   start:"15:45",end:"16:30", genre:"indie folk"},
-      {id:"su15",name:"Good Flying Birds",                        stage:"The Casbah",   start:"15:45",end:"16:30", genre:"indie"},
-      {id:"su16",name:"Disco Horizontes",                         stage:"The Shore",    start:"16:00",end:"19:00", genre:"disco / house DJ"},
-      {id:"su17",name:"Universiteit van Nederland",               stage:"Not Nothing",  start:"14:00",end:"17:00", genre:"talk"},
-      {id:"su18",name:"Don West",                                 stage:"TWO",          start:"16:45",end:"17:45", genre:"soul"},
-      {id:"su19",name:"Girls to the Front (DJ Set)",              stage:"The Floor",    start:"16:30",end:"17:30", genre:"indie dance DJ"},
-      {id:"su20",name:"Another Country $$$$",                     stage:"The Casbah",   start:"17:15",end:"18:00", genre:"electronic / UK garage"},
-      {id:"su21",name:"Hiefoda Tunes",                            stage:"Not Nothing",  start:"17:45",end:"21:00", genre:"world / dance"},
-      {id:"su22",name:"Ethel Cain",                               stage:"ONE",          start:"17:45",end:"18:45", genre:"dream pop / slowcore"},
-      {id:"su23",name:"Getdown Services",                         stage:"The Secret",   start:"17:30",end:"18:30", genre:"dance-punk"},
-      {id:"su24",name:"Lucky Done Gone B2B Sef",                  stage:"The Floor",    start:"18:00",end:"19:00", genre:"house / hip-hop"},
-      {id:"su25",name:"Yard Act",                                 stage:"TWO",          start:"18:45",end:"19:45", genre:"post-punk"},
-      {id:"su26",name:"C'est Qui?",                               stage:"The Casbah",   start:"18:45",end:"19:30", genre:"garage punk"},
-      {id:"su27",name:"Genesis Owusu",                            stage:"The Secret",   start:"19:30",end:"20:30", genre:"hip-hop / funk"},
-      {id:"su28",name:"Mac DeMarco",                              stage:"ONE",          start:"19:45",end:"20:45", genre:"indie rock"},
-      {id:"su29",name:"Marie Davidson (DJ set)",                  stage:"The Floor",    start:"19:30",end:"21:00", genre:"techno / minimal wave"},
-      {id:"su30",name:"JBN Soundsystem",                          stage:"The Shore",    start:"19:00",end:"21:00", genre:"jazz / world music"},
-      {id:"su31",name:"Joey Valence & Brae",                      stage:"TWO",          start:"20:45",end:"21:45", genre:"hip-hop"},
-      {id:"su32",name:"Lime Garden",                              stage:"The Casbah",   start:"20:15",end:"21:00", genre:"indie pop"},
-      {id:"su33",name:"Aili & Orson (Japanese DJ Set)",           stage:"The Floor",    start:"21:00",end:"22:00", genre:"electro-pop DJ"},
-      {id:"su34",name:"Night Dubbing",                            stage:"Not Nothing",  start:"21:00",end:"23:00", genre:"balearic / disco dub"},
-      {id:"su35",name:"TBA (The Shore)",                          stage:"The Shore",    start:"21:00",end:"23:00"},
-      {id:"su36",name:"Gelli Haha",                               stage:"The Secret",   start:"21:30",end:"22:30", genre:"synth-pop"},
-      {id:"su37",name:"Gorillaz",                                 stage:"ONE",          start:"22:00",end:"23:30", genre:"alternative hip-hop"},
-      {id:"su38",name:"WK Nederland - Japan",                     stage:"The Casbah",   start:"22:00",end:"00:00", genre:"talk / sports"},
-      {id:"su39",name:"Oceanic (Maximal Minimalism)",             stage:"The Floor",    start:"22:30",end:"23:30", genre:"leftfield techno"},
-      {id:"su40",name:"Tim Reaper",                               stage:"Not Nothing",  start:"23:00",end:"00:30", genre:"jungle"},
-      {id:"su41",name:"Suze Ijó",                                 stage:"The Shore",    start:"23:00",end:"00:30", genre:"house"},
-      {id:"su42",name:"Sammy Virji",                              stage:"TWO",          start:"23:30",end:"00:30", genre:"UK garage"},
-      {id:"su43",name:"Parker Fans",                              stage:"The Secret",   start:"23:30",end:"00:30", genre:"indie boogie / pop"},
-    ]
-  }
-};
+// ─── GENRES ───────────────────────────────────────────────────────────────────
+// Static genre lookup by act ID. Used to backfill genre into db.lineup acts
+// (migration) and to display genres in cards / flow blocks.
+const ACT_GENRES = {
+  f1:"indie dance DJ",        f2:"electro-pop / Afropop",    f3:"shoegaze / dream pop",
+  f4:"post-punk",             f5:"reggae / dub",             f6:"Afrobeat",
+  f7:"indie pop",             f8:"italo disco",              f9:"alt R&B",
+  f10:"indie rock",           f11:"talk",                    f12:"hip-hop",
+  f13:"soul",                 f14:"rap / cabaret",           f16:"disco / house",
+  f17:"sega / world music",   f18:"punk / indie DJ",         f19:"Afropop / R&B",
+  f20:"post-punk / hip-hop",  f21:"dance-punk",              f22:"hip-hop",
+  f23:"electronic / dance",   f24:"hip-hop / soul",          f25:"death metal",
+  f26:"melodic hardcore",     f27:"afro disco / house",      f28:"hiplife / highlife",
+  f29:"blues rock",           f30:"hyperpop / club",         f31:"synth-pop",
+  f32:"house / techno",       f33:"Afro-Latin / Cuban DJ",   f34:"synth-pop",
+  f35:"Dutch trap",           f36:"wave / electro DJ",       f37:"lo-fi indie",
+  f38:"house / acid",         f39:"Latin electronic",        f40:"indie DJ",
+  f41:"post-punk DJ",         f42:"house / techno",          f43:"trap / hip-hop",
 
-// Genre lookup by act ID — keyed from DAYS so it works even when db.lineup overrides the lineup.
-const ACT_GENRES = {};
-for (const day of Object.values(DAYS))
-  for (const act of day.acts)
-    if (act.genre) ACT_GENRES[act.id] = act.genre;
+  s1:"indie folk / dream pop",          s2:"indie dance DJ",             s3:"Brazilian folk / MPB",
+  s4:"indie rock",                      s5:"alt-folk",                   s6:"Persian DJ / world music",
+  s7:"art folk",                        s8:"R&B / global pop",           s9:"talk",
+  s10:"electronica",                    s11:"art pop",                   s12:"noise rock",
+  s13:"indie rock",                     s14:"hip-hop",                   s15:"Irish folk DJ",
+  s16:"indie rock",                     s17:"indie folk",                s18:"indie rock",
+  s19:"talk",                           s20:"disco / house DJ",          s21:"talk",
+  s22:"pop / art pop",                  s23:"post-punk",                 s24:"post-punk",
+  s25:"indie pop",                      s26:"electroclash / indie",      s27:"synth-pop",
+  s28:"shoegaze",                       s29:"indie rock",                s30:"art punk",
+  s31:"indie dance DJ",                 s33:"post-punk",                 s34:"pop",
+  s35:"psych rock",                     s36:"Tanzanian folk / electronic",s37:"techno / electro",
+  s38:"roots reggae",                   s39:"art rock",                  s40:"hip-hop",
+  s41:"breakbeat / industrial",         s42:"Afro-psychedelic",          s43:"drum & bass",
+  s44:"world music",                    s45:"world music / funk",        s46:"deep house",
+  s47:"industrial / EBM",               s48:"house / techno",            s49:"Afrobeat / disco house",
+  s50:"synth-pop DJ",                   s51:"Latin electronic / rave",   s52:"dubstep / bass",
+  s53:"indie dance DJ",                 s54:"indie DJ",
+
+  su1:"indie pop",               su2:"indie dance DJ",          su3:"molam / electronic",
+  su4:"indie folk / pop",        su5:"indie rock",              su6:"gothic rock / organ",
+  su7:"folk rock",               su8:"Arabic alternative",      su9:"Afrobeat / jazz",
+  su10:"post-punk",              su11:"Dutch indie pop",        su12:"bass / electronic",
+  su14:"indie folk",             su15:"indie",                  su16:"disco / house DJ",
+  su17:"talk",                   su18:"soul",                   su19:"indie dance DJ",
+  su20:"electronic / UK garage", su21:"world / dance",          su22:"dream pop / slowcore",
+  su23:"dance-punk",             su24:"house / hip-hop",        su25:"post-punk",
+  su26:"garage punk",            su27:"hip-hop / funk",         su28:"indie rock",
+  su29:"techno / minimal wave",  su30:"jazz / world music",     su31:"hip-hop",
+  su32:"indie pop",              su33:"electro-pop DJ",         su34:"balearic / disco dub",
+  su36:"synth-pop",              su37:"alternative hip-hop",    su38:"talk / sports",
+  su39:"leftfield techno",       su40:"jungle",                 su41:"house",
+  su42:"UK garage",              su43:"indie boogie / pop",
+};
 
 // ─── STATE ────────────────────────────────────────────────────────────────────
 let db         = { marks: {}, members: {}, locations: {}, list: {}, want: {}, ratings: {}, actEdits: {}, lineup: {} };
@@ -1939,7 +1825,7 @@ function applyPending(state) {
   if (!state.want)     state.want     = {};
   if (!state.ratings)  state.ratings  = {};
   if (!state.actEdits) state.actEdits = {};
-  if (!state.lineup || !Object.keys(state.lineup).length) state.lineup = JSON.parse(JSON.stringify(DAYS));
+  if (!state.lineup) state.lineup = {};
   if (myName && myColor) state.members[myName] = myColor;
   if (myName) {
     for (const [actId, toggle] of Object.entries(pendingToggles)) {
@@ -2014,7 +1900,7 @@ async function doSave() {
       want:      {},
       ratings:   {},
       actEdits:  { ...(remote.actEdits || {}) },
-      lineup:    (remote.lineup && Object.keys(remote.lineup).length) ? remote.lineup : JSON.parse(JSON.stringify(DAYS))
+      lineup:    remote.lineup || {}
     };
     for (const [actId, edit] of Object.entries(snapshotActEdits)) {
       merged.actEdits[actId] = { ...(merged.actEdits[actId] || {}), ...edit };
@@ -2737,7 +2623,7 @@ function relativeTime(t) {
 }
 
 function activeLineup() {
-  return (db.lineup && Object.keys(db.lineup).length) ? db.lineup : DAYS;
+  return db.lineup || {};
 }
 
 function actName(act) {
@@ -3160,9 +3046,6 @@ function timeToMins(t) {
   // Treat times before 06:00 as next-day (after midnight)
   return (h < 6 ? h + 24 : h) * 60 + m;
 }
-Object.values(DAYS).forEach(day => {
-  day.acts.sort((a, b) => timeToMins(a.start) - timeToMins(b.start));
-});
 
 // ─── BOOT ─────────────────────────────────────────────────────────────────────
 document.getElementById('name-input').addEventListener('keydown', e => {
@@ -3300,6 +3183,15 @@ window.addEventListener('pageshow', updateCountdown);
 
 loadDB().then(() => {
   if (myName && db.members[myName]) myColor = db.members[myName];
+
+  // One-time migration: backfill genre field into db.lineup acts that are missing it,
+  // then save so JSONBin stays up to date.
+  let genresMissing = false;
+  for (const day of Object.values(db.lineup || {}))
+    for (const act of (day.acts || []))
+      if (!act.genre && ACT_GENRES[act.id]) { act.genre = ACT_GENRES[act.id]; genresMissing = true; }
+  if (genresMissing) saveDB();
+
   document.getElementById('splash').classList.add('hidden');
   render();
   schedulePoll();

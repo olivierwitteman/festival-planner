@@ -2198,6 +2198,7 @@ function textColor(hex) {
 
 // ─── RENDER ───────────────────────────────────────────────────────────────────
 function render() {
+  if (!db.lineup || !Object.keys(db.lineup).length) return; // wait for loadDB
   document.getElementById('loading').style.display = 'none';
   renderExistingMembers();
   renderMembersBar();

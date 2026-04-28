@@ -2277,15 +2277,14 @@ function renderMembersBar() {
   });
 
   // Genre chips — collapsible row below member chips
-  const day = activeLineup()[activeDay];
-  if (day) {
-    const counts = {};
-    for (const act of day.acts) {
+  const counts = {};
+  for (const day of Object.values(activeLineup()))
+    for (const act of (day.acts || []))  {
       const g = ACT_GENRES[act.id];
       if (g) counts[g] = (counts[g] || 0) + 1;
     }
-    const genres = Object.entries(counts).sort((a, b) => b[1] - a[1]).map(([g]) => g);
-    if (genres.length) {
+  const genres = Object.entries(counts).sort((a, b) => b[1] - a[1]).map(([g]) => g);
+  if (genres.length) {
       const br = document.createElement('span');
       br.className = 'genre-row-break';
       bar.appendChild(br);
@@ -2306,7 +2305,6 @@ function renderMembersBar() {
         btn.onclick = () => setGenreFilter(genre);
         bar.appendChild(btn);
       });
-    }
   }
 }
 

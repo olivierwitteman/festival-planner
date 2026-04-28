@@ -1377,21 +1377,6 @@
   }
 
   /* ── ACT EDIT MODAL ─────────────────────────────────────────── */
-  .act-edit-btn {
-    background: none;
-    border: none;
-    color: #444;
-    font-size: 12px;
-    line-height: 1;
-    cursor: pointer;
-    padding: 0 2px;
-    flex-shrink: 0;
-    opacity: 0;
-    transition: opacity 0.15s, color 0.15s;
-  }
-  .act-card:hover .act-edit-btn { opacity: 1; }
-  .act-edit-btn:hover { color: var(--text); }
-
   .act-notes {
     font-size: 10px;
     color: var(--muted);
@@ -1401,19 +1386,21 @@
   }
 
   .act-info-btn {
-    background: none;
-    border: none;
-    color: #444;
-    font-size: 11px;
+    background: rgba(255,255,255,0.07);
+    border: 1px solid rgba(255,255,255,0.12);
+    border-radius: 10px;
+    color: #888;
+    font-size: 9px;
+    font-family: inherit;
+    font-weight: 700;
+    letter-spacing: 0.5px;
     line-height: 1;
     cursor: pointer;
-    padding: 0 2px;
+    padding: 2px 6px;
     flex-shrink: 0;
-    opacity: 0;
-    transition: opacity 0.15s, color 0.15s;
+    transition: color 0.15s, background 0.15s;
   }
-  .act-card:hover .act-info-btn { opacity: 1; }
-  .act-info-btn:hover { color: var(--text); }
+  .act-info-btn:hover { color: var(--text); background: rgba(255,255,255,0.12); }
 
   #artist-modal-overlay {
     display: none;
@@ -1440,7 +1427,14 @@
     letter-spacing: 3px;
     color: #fff;
     line-height: 1.1;
+    background: none;
+    border: none;
+    border-bottom: 1px solid var(--border);
+    outline: none;
+    width: 100%;
+    padding: 0 0 4px;
   }
+  #artist-modal-name:focus { border-bottom-color: var(--accent); }
   #artist-modal-meta {
     font-size: 10px;
     letter-spacing: 1px;
@@ -1528,62 +1522,7 @@
   .stream-btn-lg.spotify   { background: rgba(30,215,96,0.12);  color: #1ED760; border-color: rgba(30,215,96,0.25); }
   .stream-btn-lg.apple     { background: rgba(252,60,68,0.12);   color: #FC3C44; border-color: rgba(252,60,68,0.25); }
   .stream-btn-lg svg { width: 16px; height: 16px; flex-shrink: 0; fill: currentColor; }
-  #artist-modal-close {
-    background: none;
-    border: 1px solid var(--border);
-    border-radius: 6px;
-    padding: 8px 14px;
-    color: var(--muted);
-    font-family: inherit;
-    font-size: 12px;
-    cursor: pointer;
-    width: 100%;
-    margin-top: 4px;
-  }
-  #artist-modal-close:hover { color: var(--text); border-color: #555; }
-
-  #act-modal-overlay {
-    display: none;
-    position: fixed;
-    inset: 0;
-    background: rgba(0,0,0,0.7);
-    z-index: 500;
-    align-items: center;
-    justify-content: center;
-    padding: 16px;
-  }
-  #act-modal-overlay.open { display: flex; }
-  #act-modal {
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: 14px;
-    padding: 20px;
-    width: 100%;
-    max-width: 420px;
-  }
-  #act-modal-name {
-    font-family: 'Bebas Neue', sans-serif;
-    font-size: 20px;
-    letter-spacing: 3px;
-    color: #fff;
-    line-height: 1.1;
-    background: none;
-    border: none;
-    border-bottom: 1px solid var(--border);
-    outline: none;
-    width: 100%;
-    padding: 0 0 4px;
-  }
-  #act-modal-name:focus { border-bottom-color: var(--accent); }
-  #act-modal-meta {
-    font-size: 10px;
-    letter-spacing: 1px;
-    color: var(--muted);
-    text-transform: uppercase;
-    margin-top: 4px;
-    margin-bottom: 16px;
-  }
-  #act-modal-notes {
+  #artist-modal-notes {
     width: 100%;
     background: var(--surface2);
     border: 1px solid var(--border);
@@ -1594,18 +1533,18 @@
     font-size: 12px;
     line-height: 1.6;
     resize: vertical;
-    min-height: 80px;
+    min-height: 72px;
     outline: none;
   }
-  #act-modal-notes:focus { border-color: var(--accent); }
-  #act-modal-notes::placeholder { color: #444; }
-  .act-modal-actions {
+  #artist-modal-notes:focus { border-color: var(--accent); }
+  #artist-modal-notes::placeholder { color: #444; }
+  .artist-modal-actions {
     display: flex;
     gap: 8px;
-    margin-top: 12px;
+    margin-top: 16px;
     justify-content: flex-end;
   }
-  #act-modal-save {
+  #artist-modal-save {
     background: var(--accent);
     border: none;
     border-radius: 6px;
@@ -1616,7 +1555,7 @@
     font-weight: 700;
     cursor: pointer;
   }
-  #act-modal-cancel {
+  #artist-modal-cancel {
     background: none;
     border: 1px solid var(--border);
     border-radius: 6px;
@@ -1626,7 +1565,7 @@
     font-size: 12px;
     cursor: pointer;
   }
-  #act-modal-cancel:hover { color: var(--text); border-color: #555; }
+  #artist-modal-cancel:hover { color: var(--text); border-color: #555; }
 </style>
 </head>
 <body>
@@ -2501,43 +2440,23 @@ function renderStageView() {
 
 let editingActId = null;
 
-function openActModal(actId) {
-  editingActId = actId;
-  const act = findActById(actId);
-  if (!act) return;
-  document.getElementById('act-modal-name').value  = (db.actEdits[actId] || {}).name || act.name;
-  document.getElementById('act-modal-meta').textContent  = `${act.stage} · ${act.start}–${act.end}`;
-  document.getElementById('act-modal-notes').value = (db.actEdits[actId] || {}).notes || '';
-  document.getElementById('act-modal-overlay').classList.add('open');
-  setTimeout(() => document.getElementById('act-modal-name').focus(), 50);
-}
-
-function closeActModal(e) {
-  if (e && e.target !== document.getElementById('act-modal-overlay')) return;
-  document.getElementById('act-modal-overlay').classList.remove('open');
-  editingActId = null;
-}
-
-function saveActEdit() {
+function saveArtistEdit() {
   if (!editingActId) return;
   const act   = findActById(editingActId);
-  const name  = document.getElementById('act-modal-name').value.trim();
-  const notes = document.getElementById('act-modal-notes').value.trim();
+  const name  = document.getElementById('artist-modal-name').value.trim();
+  const notes = document.getElementById('artist-modal-notes').value.trim();
   const edit  = { name: name === (act && act.name) ? '' : name, notes };
   db.actEdits = db.actEdits || {};
   db.actEdits[editingActId] = { ...(db.actEdits[editingActId] || {}), ...edit };
   pendingActEdits[editingActId] = edit;
-  document.getElementById('act-modal-overlay').classList.remove('open');
+  document.getElementById('artist-modal-overlay').classList.remove('open');
   editingActId = null;
   render();
   saveDB();
 }
 
 document.addEventListener('keydown', e => {
-  if (e.key === 'Escape') {
-    document.getElementById('act-modal-overlay').classList.remove('open');
-    document.getElementById('artist-modal-overlay').classList.remove('open');
-  }
+  if (e.key === 'Escape') document.getElementById('artist-modal-overlay').classList.remove('open');
 });
 
 function avgWant(actId) {
@@ -2587,14 +2506,16 @@ async function fetchWikiSummary(name) {
 
 function openArtistModal(actId) {
   event.stopPropagation();
+  editingActId = actId;
   const act  = findActById(actId);
   if (!act) return;
   const name  = actName(act);
   const q     = encodeURIComponent(name);
   const genre = ACT_GENRES[actId] ? ` · ${ACT_GENRES[actId].toUpperCase()}` : '';
 
-  document.getElementById('artist-modal-name').textContent = name;
+  document.getElementById('artist-modal-name').value       = (db.actEdits[actId] || {}).name || act.name;
   document.getElementById('artist-modal-meta').textContent = `${act.stage} · ${act.start}–${act.end}${genre}`;
+  document.getElementById('artist-modal-notes').value      = (db.actEdits[actId] || {}).notes || '';
   document.getElementById('artist-modal-spotify').href     = `https://open.spotify.com/search/${q}`;
   document.getElementById('artist-modal-apple').href       = `https://music.apple.com/search?term=${q}`;
 
@@ -2633,6 +2554,7 @@ function openArtistModal(actId) {
 function closeArtistModal(e) {
   if (e && e.target !== document.getElementById('artist-modal-overlay')) return;
   document.getElementById('artist-modal-overlay').classList.remove('open');
+  editingActId = null;
 }
 
 function renderCard(act) {
@@ -2667,8 +2589,7 @@ function renderCard(act) {
   return `<div class="act-card${isMarked?' marked':''}" ${style} onclick="toggleMark('${act.id}')">
     <div class="act-name">
       ${actName(act)}
-      <button class="act-info-btn" onclick="openArtistModal('${act.id}')" title="Artist info & streaming">♪</button>
-      <button class="act-edit-btn" onclick="event.stopPropagation();openActModal('${act.id}')" title="Edit act">✎</button>
+      <button class="act-info-btn" onclick="openArtistModal('${act.id}')" title="Artist details, notes & streaming">♪</button>
     </div>
     <div class="act-time">${act.start}–${act.end}${ACT_GENRES[act.id] ? ` · <span class="act-genre">${ACT_GENRES[act.id]}</span>` : ''}</div>
     ${clashHtml}
@@ -3466,21 +3387,9 @@ loadDB().then(() => {
 });
 </script>
 
-<div id="act-modal-overlay" onclick="closeActModal(event)">
-  <div id="act-modal">
-    <input id="act-modal-name" type="text" spellcheck="false" maxlength="80">
-    <div id="act-modal-meta"></div>
-    <textarea id="act-modal-notes" placeholder="Add notes, tips, friends to meet up with…" maxlength="500"></textarea>
-    <div class="act-modal-actions">
-      <button id="act-modal-cancel" onclick="closeActModal()">Cancel</button>
-      <button id="act-modal-save"   onclick="saveActEdit()">Save</button>
-    </div>
-  </div>
-</div>
-
 <div id="artist-modal-overlay" onclick="closeArtistModal(event)">
   <div id="artist-modal">
-    <div id="artist-modal-name"></div>
+    <input id="artist-modal-name" type="text" spellcheck="false" maxlength="80">
     <div id="artist-modal-meta"></div>
 
     <div class="artist-modal-section">
@@ -3507,7 +3416,15 @@ loadDB().then(() => {
     </div>
     </div>
 
-    <button id="artist-modal-close" onclick="document.getElementById('artist-modal-overlay').classList.remove('open')">Close</button>
+    <div class="artist-modal-section">
+      <div class="artist-modal-section-title">Notes</div>
+      <textarea id="artist-modal-notes" placeholder="Tips, friends to meet, set times…" maxlength="500"></textarea>
+    </div>
+
+    <div class="artist-modal-actions">
+      <button id="artist-modal-cancel" onclick="closeArtistModal()">Cancel</button>
+      <button id="artist-modal-save"   onclick="saveArtistEdit()">Save</button>
+    </div>
   </div>
 </div>
 

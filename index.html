@@ -245,6 +245,9 @@
   .chip:hover  { border-color: #555; color: var(--text); }
   .chip.active { border-color: #666; color: #fff; background: var(--border); }
 
+  .genre-row-break { flex-basis: 100%; height: 0; }
+  .genre-chip.active { border-color: var(--accent2); color: #000; background: var(--accent2); font-weight: 700; }
+
   .picked-chip.active {
     border-color: var(--accent2);
     color: #000;
@@ -1731,6 +1734,7 @@ let myColor    = localStorage.getItem('fp_color') || '';
 let activeDay  = 'friday';
 let activeView = localStorage.getItem('fp_view') || 'home';
 let filterBy        = new Set();   // empty = show all; populated = show acts by any selected member
+let filterGenres    = new Set();   // empty = show all genres; populated = show only matching genres
 let showOnlyPicked  = false;
 
 // ─── SYNC ─────────────────────────────────────────────────────────────────────
@@ -2183,6 +2187,11 @@ function setView(v) {
   render();
 }
 
+function setGenreFilter(genre) {
+  if (filterGenres.has(genre)) filterGenres.delete(genre); else filterGenres.add(genre);
+  render();
+}
+
 function setFilter(name) {
   if (name === 'all') {
     filterBy.clear();
@@ -2237,7 +2246,7 @@ function render() {
 
 function renderMembersBar() {
   const bar = document.getElementById('members-bar');
-  bar.querySelectorAll('.mchip').forEach(c => c.remove());
+  bar.querySelectorAll('.mchip, .genre-chip, .genre-row-break').forEach(c => c.remove());
 
   // all-chip
   const allChip = document.getElementById('chip-all');
@@ -2265,6 +2274,29 @@ function renderMembersBar() {
     btn.onclick   = () => setFilter(name);
     bar.appendChild(btn);
   });
+
+  // Genre chips — unique genres for today's acts, sorted by frequency
+  const day = activeLineup()[activeDay];
+  if (day) {
+    const counts = {};
+    for (const act of day.acts) {
+      const g = ACT_GENRES[act.id];
+      if (g) counts[g] = (counts[g] || 0) + 1;
+    }
+    const genres = Object.entries(counts).sort((a, b) => b[1] - a[1]).map(([g]) => g);
+    if (genres.length) {
+      const br = document.createElement('span');
+      br.className = 'genre-row-break';
+      bar.appendChild(br);
+      genres.forEach(genre => {
+        const btn = document.createElement('button');
+        btn.className = 'chip genre-chip' + (filterGenres.has(genre) ? ' active' : '');
+        btn.textContent = genre;
+        btn.onclick = () => setGenreFilter(genre);
+        bar.appendChild(btn);
+      });
+    }
+  }
 }
 
 function renderHomeView() {
@@ -2305,6 +2337,7 @@ function renderStageView() {
     ? day.acts
     : day.acts.filter(a => (db.marks[a.id] || []).some(n => filterBy.has(n)));
   if (showOnlyPicked) acts = acts.filter(a => (db.marks[a.id] || []).length > 0);
+  if (filterGenres.size > 0) acts = acts.filter(a => filterGenres.has(ACT_GENRES[a.id]));
 
   const byStage = Object.fromEntries(day.stages.map(s => [s, []]));
   acts.forEach(a => { if (byStage[a.stage]) byStage[a.stage].push(a); });
@@ -2481,6 +2514,7 @@ function renderFlowView() {
     ? day.acts
     : day.acts.filter(a => (db.marks[a.id] || []).some(n => filterBy.has(n)));
   if (showOnlyPicked) acts = acts.filter(a => (db.marks[a.id] || []).length > 0);
+  if (filterGenres.size > 0) acts = acts.filter(a => filterGenres.has(ACT_GENRES[a.id]));
 
   const totalW = Math.round((FLOW_MAX_M - FLOW_MIN_M) * PX_PER_MIN);
 

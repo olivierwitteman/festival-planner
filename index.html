@@ -1490,7 +1490,7 @@
   <div id="splash-logo">BKS<span>'26</span></div>
   <div id="splash-sub">BEST KEPT SECRET</div>
   <div class="splash-dots"><span></span><span></span><span></span></div>
-  <div id="splash-msg">SYNCING GROUP DATA…</div>
+  <div id="splash-msg">CONNECTING…</div>
 </div>
 
 <div id="header">
@@ -1738,9 +1738,28 @@ const configured = typeof JSONBIN_BIN_ID !== 'undefined'
                 && JSONBIN_BIN_ID  !== 'YOUR_BIN_ID_HERE'
                 && JSONBIN_API_KEY !== 'YOUR_API_KEY_HERE';
 
+const SPLASH_KEYS = ['marks','members','want','ratings','actEdits','locations','list','lineup'];
+let _splashCycle = null;
+
 function syncUI(state, label) {
   document.getElementById('sync-dot').className   = 'sync-dot' + (state !== 'ok' ? ' ' + state : '');
   document.getElementById('sync-label').textContent = label;
+  const splash    = document.getElementById('splash');
+  const splashMsg = document.getElementById('splash-msg');
+  if (!splash || splash.classList.contains('hidden')) {
+    clearInterval(_splashCycle); _splashCycle = null; return;
+  }
+  clearInterval(_splashCycle); _splashCycle = null;
+  if (state === 'syncing') {
+    let i = 0;
+    splashMsg.textContent = `FETCHING ${SPLASH_KEYS[0].toUpperCase()}…`;
+    _splashCycle = setInterval(() => {
+      i = (i + 1) % SPLASH_KEYS.length;
+      splashMsg.textContent = `FETCHING ${SPLASH_KEYS[i].toUpperCase()}…`;
+    }, 200);
+  } else {
+    splashMsg.textContent = state === 'ok' ? 'READY' : 'OFFLINE — LOADING FROM CACHE';
+  }
 }
 
 async function loadDB() {
@@ -2198,6 +2217,7 @@ function textColor(hex) {
 
 // ─── RENDER ───────────────────────────────────────────────────────────────────
 function render() {
+  if (!db.lineup || !Object.keys(db.lineup).length) return; // wait for loadDB
   document.getElementById('loading').style.display = 'none';
   renderExistingMembers();
   renderMembersBar();

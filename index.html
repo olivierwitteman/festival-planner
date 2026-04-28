@@ -1447,8 +1447,62 @@
     color: var(--muted);
     text-transform: uppercase;
     margin-top: 4px;
-    margin-bottom: 20px;
   }
+  #artist-modal {
+    max-height: 90vh;
+    overflow-y: auto;
+  }
+  .artist-modal-section {
+    border-top: 1px solid var(--border);
+    padding-top: 14px;
+    margin-top: 14px;
+  }
+  .artist-modal-section-title {
+    font-size: 9px;
+    letter-spacing: 1.5px;
+    color: var(--muted);
+    text-transform: uppercase;
+    margin-bottom: 10px;
+  }
+  .picker-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 7px;
+  }
+  .picker-row:last-child { margin-bottom: 0; }
+  .picker-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+  .picker-name {
+    font-size: 11px;
+    color: var(--text);
+    flex: 1;
+  }
+  .picker-want {
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    color: #F59E0B;
+  }
+  .picker-empty {
+    font-size: 11px;
+    color: var(--muted);
+    font-style: italic;
+  }
+  .artist-modal-desc {
+    font-size: 11px;
+    color: #999;
+    line-height: 1.6;
+  }
+  .artist-modal-desc.loading {
+    color: var(--muted);
+    font-style: italic;
+  }
+  .artist-modal-desc.none { display: none; }
   .artist-modal-stream {
     display: flex;
     flex-direction: column;
@@ -2513,17 +2567,66 @@ function avgRating(actId) {
   return scores.reduce((a, b) => a + b, 0) / scores.length;
 }
 
+const wikiCache = {};
+
+async function fetchWikiSummary(name) {
+  if (name in wikiCache) return wikiCache[name];
+  try {
+    const res = await fetch(`https://en.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(name)}`);
+    if (!res.ok) { wikiCache[name] = null; return null; }
+    const data = await res.json();
+    const sentences = (data.extract || '').split(/(?<=\.)\s+/);
+    const excerpt   = sentences.slice(0, 2).join(' ');
+    wikiCache[name] = { tagline: data.description || null, excerpt };
+    return wikiCache[name];
+  } catch {
+    wikiCache[name] = null;
+    return null;
+  }
+}
+
 function openArtistModal(actId) {
   event.stopPropagation();
   const act  = findActById(actId);
   if (!act) return;
-  const name = actName(act);
-  const q    = encodeURIComponent(name);
+  const name  = actName(act);
+  const q     = encodeURIComponent(name);
   const genre = ACT_GENRES[actId] ? ` · ${ACT_GENRES[actId].toUpperCase()}` : '';
+
   document.getElementById('artist-modal-name').textContent = name;
   document.getElementById('artist-modal-meta').textContent = `${act.stage} · ${act.start}–${act.end}${genre}`;
   document.getElementById('artist-modal-spotify').href     = `https://open.spotify.com/search/${q}`;
   document.getElementById('artist-modal-apple').href       = `https://music.apple.com/search?term=${q}`;
+
+  // Who's going
+  const pickers = db.marks[actId] || [];
+  document.getElementById('artist-modal-pickers').innerHTML = pickers.length
+    ? pickers.map(n => {
+        const c    = colorOf(n);
+        const want = (db.want[n] || {})[actId];
+        return `<div class="picker-row">
+          <span class="picker-dot" style="background:${c}"></span>
+          <span class="picker-name">${n}</span>
+          ${want ? `<span class="picker-want">WANT ★${want}</span>` : ''}
+        </div>`;
+      }).join('')
+    : `<div class="picker-empty">Nobody has picked this yet</div>`;
+
+  // About — show loading then fill in
+  const descEl = document.getElementById('artist-modal-desc');
+  descEl.className = 'artist-modal-desc loading';
+  descEl.textContent = 'Loading…';
+  fetchWikiSummary(name).then(info => {
+    if (!info || !info.excerpt) {
+      descEl.className = 'artist-modal-desc none';
+      return;
+    }
+    descEl.className = 'artist-modal-desc';
+    descEl.textContent = info.tagline
+      ? `${info.tagline} — ${info.excerpt}`
+      : info.excerpt;
+  });
+
   document.getElementById('artist-modal-overlay').classList.add('open');
 }
 
@@ -3379,7 +3482,20 @@ loadDB().then(() => {
   <div id="artist-modal">
     <div id="artist-modal-name"></div>
     <div id="artist-modal-meta"></div>
-    <div class="artist-modal-stream">
+
+    <div class="artist-modal-section">
+      <div class="artist-modal-section-title">Who's going</div>
+      <div id="artist-modal-pickers"></div>
+    </div>
+
+    <div class="artist-modal-section">
+      <div class="artist-modal-section-title">About</div>
+      <div id="artist-modal-desc" class="artist-modal-desc loading">Loading…</div>
+    </div>
+
+    <div class="artist-modal-section">
+      <div class="artist-modal-section-title">Listen on</div>
+      <div class="artist-modal-stream">
       <a id="artist-modal-spotify" class="stream-btn-lg spotify" href="#" target="_blank" rel="noopener">
         <svg viewBox="0 0 24 24" fill="currentColor" width="16" height="16"><path d="M12 0C5.4 0 0 5.4 0 12s5.4 12 12 12 12-5.4 12-12S18.66 0 12 0zm5.521 17.34c-.24.359-.66.48-1.021.24-2.82-1.74-6.36-2.101-10.561-1.141-.418.122-.779-.179-.899-.539-.12-.421.18-.78.54-.9 4.56-1.021 8.52-.6 11.64 1.32.42.18.479.659.301 1.02zm1.44-3.3c-.301.42-.841.6-1.262.3-3.239-1.98-8.159-2.58-11.939-1.38-.479.12-1.02-.12-1.14-.6-.12-.48.12-1.021.6-1.141C9.6 9.9 15 10.561 18.72 12.84c.361.181.54.78.241 1.2zm.12-3.36C15.24 8.4 8.82 8.16 5.16 9.301c-.6.179-1.2-.181-1.38-.721-.18-.601.18-1.2.72-1.381 4.26-1.26 11.28-1.02 15.721 1.621.539.3.719 1.02.419 1.56-.299.421-1.02.599-1.559.3z"/></svg>
         OPEN IN SPOTIFY
@@ -3389,6 +3505,8 @@ loadDB().then(() => {
         OPEN IN APPLE MUSIC
       </a>
     </div>
+    </div>
+
     <button id="artist-modal-close" onclick="document.getElementById('artist-modal-overlay').classList.remove('open')">Close</button>
   </div>
 </div>

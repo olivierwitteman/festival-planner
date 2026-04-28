@@ -1400,32 +1400,93 @@
     font-style: italic;
   }
 
-  .act-stream {
-    display: flex;
-    gap: 4px;
-    margin-top: 6px;
-  }
-  .stream-btn {
-    display: inline-flex;
-    align-items: center;
-    gap: 3px;
-    font-size: 8px;
-    font-family: inherit;
-    font-weight: 700;
-    letter-spacing: 0.6px;
-    padding: 2px 6px;
-    border-radius: 10px;
+  .act-info-btn {
+    background: none;
     border: none;
-    text-decoration: none;
+    color: #444;
+    font-size: 11px;
+    line-height: 1;
     cursor: pointer;
-    opacity: 0.55;
-    transition: opacity 0.15s;
-    line-height: 1.4;
+    padding: 0 2px;
+    flex-shrink: 0;
+    opacity: 0;
+    transition: opacity 0.15s, color 0.15s;
   }
-  .stream-btn:hover { opacity: 1; }
-  .stream-btn.spotify  { background: rgba(30,215,96,0.12);  color: #1ED760; }
-  .stream-btn.apple    { background: rgba(252,60,68,0.12);   color: #FC3C44; }
-  .stream-btn svg { width: 8px; height: 8px; flex-shrink: 0; fill: currentColor; }
+  .act-card:hover .act-info-btn { opacity: 1; }
+  .act-info-btn:hover { color: var(--text); }
+
+  #artist-modal-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.7);
+    z-index: 500;
+    align-items: center;
+    justify-content: center;
+    padding: 16px;
+  }
+  #artist-modal-overlay.open { display: flex; }
+  #artist-modal {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 20px;
+    width: 100%;
+    max-width: 420px;
+  }
+  #artist-modal-name {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 28px;
+    letter-spacing: 3px;
+    color: #fff;
+    line-height: 1.1;
+  }
+  #artist-modal-meta {
+    font-size: 10px;
+    letter-spacing: 1px;
+    color: var(--muted);
+    text-transform: uppercase;
+    margin-top: 4px;
+    margin-bottom: 20px;
+  }
+  .artist-modal-stream {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-bottom: 16px;
+  }
+  .stream-btn-lg {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 12px 16px;
+    border-radius: 8px;
+    text-decoration: none;
+    font-family: inherit;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 1.5px;
+    border: 1px solid transparent;
+    transition: opacity 0.15s;
+  }
+  .stream-btn-lg:hover { opacity: 0.8; }
+  .stream-btn-lg.spotify   { background: rgba(30,215,96,0.12);  color: #1ED760; border-color: rgba(30,215,96,0.25); }
+  .stream-btn-lg.apple     { background: rgba(252,60,68,0.12);   color: #FC3C44; border-color: rgba(252,60,68,0.25); }
+  .stream-btn-lg svg { width: 16px; height: 16px; flex-shrink: 0; fill: currentColor; }
+  #artist-modal-close {
+    background: none;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 8px 14px;
+    color: var(--muted);
+    font-family: inherit;
+    font-size: 12px;
+    cursor: pointer;
+    width: 100%;
+    margin-top: 4px;
+  }
+  #artist-modal-close:hover { color: var(--text); border-color: #555; }
 
   #act-modal-overlay {
     display: none;
@@ -2419,7 +2480,10 @@ function saveActEdit() {
 }
 
 document.addEventListener('keydown', e => {
-  if (e.key === 'Escape') document.getElementById('act-modal-overlay').classList.remove('open');
+  if (e.key === 'Escape') {
+    document.getElementById('act-modal-overlay').classList.remove('open');
+    document.getElementById('artist-modal-overlay').classList.remove('open');
+  }
 });
 
 function avgWant(actId) {
@@ -2449,16 +2513,23 @@ function avgRating(actId) {
   return scores.reduce((a, b) => a + b, 0) / scores.length;
 }
 
-function streamingLinksHtml(name) {
-  const q = encodeURIComponent(name);
-  const spotifyUrl     = `https://open.spotify.com/search/${q}`;
-  const appleMusicUrl  = `https://music.apple.com/search?term=${q}`;
-  const spotifyIcon    = `<svg viewBox="0 0 24 24"><path d="M12 0C5.4 0 0 5.4 0 12s5.4 12 12 12 12-5.4 12-12S18.66 0 12 0zm5.521 17.34c-.24.359-.66.48-1.021.24-2.82-1.74-6.36-2.101-10.561-1.141-.418.122-.779-.179-.899-.539-.12-.421.18-.78.54-.9 4.56-1.021 8.52-.6 11.64 1.32.42.18.479.659.301 1.02zm1.44-3.3c-.301.42-.841.6-1.262.3-3.239-1.98-8.159-2.58-11.939-1.38-.479.12-1.02-.12-1.14-.6-.12-.48.12-1.021.6-1.141C9.6 9.9 15 10.561 18.72 12.84c.361.181.54.78.241 1.2zm.12-3.36C15.24 8.4 8.82 8.16 5.16 9.301c-.6.179-1.2-.181-1.38-.721-.18-.601.18-1.2.72-1.381 4.26-1.26 11.28-1.02 15.721 1.621.539.3.719 1.02.419 1.56-.299.421-1.02.599-1.559.3z"/></svg>`;
-  const appleIcon      = `<svg viewBox="0 0 24 24"><path d="M23.994 6.124a9.23 9.23 0 00-.24-2.19c-.317-1.31-1.062-2.31-2.18-3.043a5.022 5.022 0 00-1.877-.726 10.496 10.496 0 00-1.564-.15c-.04-.003-.083-.01-.124-.013H5.986c-.152.01-.303.017-.455.026C4.786.07 4.043.15 3.34.428 2.004.958 1.04 1.88.475 3.208c-.192.448-.292.925-.34 1.397-.06.53-.072 1.063-.079 1.595v13.6c.006.508.016 1.017.077 1.525.237 2.017 1.35 3.36 3.268 3.91.617.174 1.25.232 1.886.238.24.006.48.01.72.01h12.84c.26 0 .52-.004.78-.012.56-.013 1.12-.056 1.674-.2 1.94-.493 3.04-1.82 3.32-3.743.07-.472.085-.95.09-1.424.003-.233.005-.467.005-.7V7.508c0-.465-.003-.928-.042-1.39zm-7.622 11.27c0 1.37-1.107 2.48-2.477 2.48s-2.477-1.11-2.477-2.48V10.54c0-.98.603-1.826 1.477-2.204l.97-.408c.66-.276 1.41-.066 1.82.511.237.34.33.727.3 1.106l.003.003v7.846zm-4.953-7.846c0-1.37 1.107-2.48 2.477-2.48s2.477 1.11 2.477 2.48v.86a3.75 3.75 0 00-2.477-.935 3.75 3.75 0 00-2.477.934v-.86z"/></svg>`;
-  return `<div class="act-stream">
-    <a class="stream-btn spotify" href="${spotifyUrl}" target="_blank" rel="noopener" onclick="event.stopPropagation()" title="Search on Spotify">${spotifyIcon} SPOTIFY</a>
-    <a class="stream-btn apple"   href="${appleMusicUrl}" target="_blank" rel="noopener" onclick="event.stopPropagation()" title="Search on Apple Music">${appleIcon} APPLE MUSIC</a>
-  </div>`;
+function openArtistModal(actId) {
+  event.stopPropagation();
+  const act  = findActById(actId);
+  if (!act) return;
+  const name = actName(act);
+  const q    = encodeURIComponent(name);
+  const genre = ACT_GENRES[actId] ? ` · ${ACT_GENRES[actId].toUpperCase()}` : '';
+  document.getElementById('artist-modal-name').textContent = name;
+  document.getElementById('artist-modal-meta').textContent = `${act.stage} · ${act.start}–${act.end}${genre}`;
+  document.getElementById('artist-modal-spotify').href     = `https://open.spotify.com/search/${q}`;
+  document.getElementById('artist-modal-apple').href       = `https://music.apple.com/search?term=${q}`;
+  document.getElementById('artist-modal-overlay').classList.add('open');
+}
+
+function closeArtistModal(e) {
+  if (e && e.target !== document.getElementById('artist-modal-overlay')) return;
+  document.getElementById('artist-modal-overlay').classList.remove('open');
 }
 
 function renderCard(act) {
@@ -2493,13 +2564,13 @@ function renderCard(act) {
   return `<div class="act-card${isMarked?' marked':''}" ${style} onclick="toggleMark('${act.id}')">
     <div class="act-name">
       ${actName(act)}
+      <button class="act-info-btn" onclick="openArtistModal('${act.id}')" title="Artist info & streaming">♪</button>
       <button class="act-edit-btn" onclick="event.stopPropagation();openActModal('${act.id}')" title="Edit act">✎</button>
     </div>
     <div class="act-time">${act.start}–${act.end}${ACT_GENRES[act.id] ? ` · <span class="act-genre">${ACT_GENRES[act.id]}</span>` : ''}</div>
     ${clashHtml}
     ${scores}
     ${notesHtml}
-    ${streamingLinksHtml(actName(act))}
     ${dots ? `<div class="act-dots">${dots}</div>` : ''}
   </div>`;
 }
@@ -3301,6 +3372,24 @@ loadDB().then(() => {
       <button id="act-modal-cancel" onclick="closeActModal()">Cancel</button>
       <button id="act-modal-save"   onclick="saveActEdit()">Save</button>
     </div>
+  </div>
+</div>
+
+<div id="artist-modal-overlay" onclick="closeArtistModal(event)">
+  <div id="artist-modal">
+    <div id="artist-modal-name"></div>
+    <div id="artist-modal-meta"></div>
+    <div class="artist-modal-stream">
+      <a id="artist-modal-spotify" class="stream-btn-lg spotify" href="#" target="_blank" rel="noopener">
+        <svg viewBox="0 0 24 24" fill="currentColor" width="16" height="16"><path d="M12 0C5.4 0 0 5.4 0 12s5.4 12 12 12 12-5.4 12-12S18.66 0 12 0zm5.521 17.34c-.24.359-.66.48-1.021.24-2.82-1.74-6.36-2.101-10.561-1.141-.418.122-.779-.179-.899-.539-.12-.421.18-.78.54-.9 4.56-1.021 8.52-.6 11.64 1.32.42.18.479.659.301 1.02zm1.44-3.3c-.301.42-.841.6-1.262.3-3.239-1.98-8.159-2.58-11.939-1.38-.479.12-1.02-.12-1.14-.6-.12-.48.12-1.021.6-1.141C9.6 9.9 15 10.561 18.72 12.84c.361.181.54.78.241 1.2zm.12-3.36C15.24 8.4 8.82 8.16 5.16 9.301c-.6.179-1.2-.181-1.38-.721-.18-.601.18-1.2.72-1.381 4.26-1.26 11.28-1.02 15.721 1.621.539.3.719 1.02.419 1.56-.299.421-1.02.599-1.559.3z"/></svg>
+        OPEN IN SPOTIFY
+      </a>
+      <a id="artist-modal-apple" class="stream-btn-lg apple" href="#" target="_blank" rel="noopener">
+        <svg viewBox="0 0 24 24" fill="currentColor" width="16" height="16"><path d="M23.994 6.124a9.23 9.23 0 00-.24-2.19c-.317-1.31-1.062-2.31-2.18-3.043a5.022 5.022 0 00-1.877-.726 10.496 10.496 0 00-1.564-.15c-.04-.003-.083-.01-.124-.013H5.986c-.152.01-.303.017-.455.026C4.786.07 4.043.15 3.34.428 2.004.958 1.04 1.88.475 3.208c-.192.448-.292.925-.34 1.397-.06.53-.072 1.063-.079 1.595v13.6c.006.508.016 1.017.077 1.525.237 2.017 1.35 3.36 3.268 3.91.617.174 1.25.232 1.886.238.24.006.48.01.72.01h12.84c.26 0 .52-.004.78-.012.56-.013 1.12-.056 1.674-.2 1.94-.493 3.04-1.82 3.32-3.743.07-.472.085-.95.09-1.424.003-.233.005-.467.005-.7V7.508c0-.465-.003-.928-.042-1.39zm-7.622 11.27c0 1.37-1.107 2.48-2.477 2.48s-2.477-1.11-2.477-2.48V10.54c0-.98.603-1.826 1.477-2.204l.97-.408c.66-.276 1.41-.066 1.82.511.237.34.33.727.3 1.106l.003.003v7.846zm-4.953-7.846c0-1.37 1.107-2.48 2.477-2.48s2.477 1.11 2.477 2.48v.86a3.75 3.75 0 00-2.477-.935 3.75 3.75 0 00-2.477.934v-.86z"/></svg>
+        OPEN IN APPLE MUSIC
+      </a>
+    </div>
+    <button id="artist-modal-close" onclick="document.getElementById('artist-modal-overlay').classList.remove('open')">Close</button>
   </div>
 </div>
 

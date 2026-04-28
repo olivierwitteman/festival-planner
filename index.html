@@ -1735,6 +1735,7 @@ let activeDay  = 'friday';
 let activeView = localStorage.getItem('fp_view') || 'home';
 let filterBy        = new Set();   // empty = show all; populated = show acts by any selected member
 let filterGenres    = new Set();   // empty = show all genres; populated = show only matching genres
+let genreBarOpen    = false;
 let showOnlyPicked  = false;
 
 // ─── SYNC ─────────────────────────────────────────────────────────────────────
@@ -2275,7 +2276,7 @@ function renderMembersBar() {
     bar.appendChild(btn);
   });
 
-  // Genre chips — unique genres for today's acts, sorted by frequency
+  // Genre chips — collapsible row below member chips
   const day = activeLineup()[activeDay];
   if (day) {
     const counts = {};
@@ -2288,7 +2289,17 @@ function renderMembersBar() {
       const br = document.createElement('span');
       br.className = 'genre-row-break';
       bar.appendChild(br);
+
+      // Toggle button
+      const toggle = document.createElement('button');
+      toggle.className = 'chip genre-chip' + (filterGenres.size > 0 ? ' active' : '');
+      toggle.textContent = `GENRE ${genreBarOpen ? '▴' : '▾'}`;
+      toggle.onclick = () => { genreBarOpen = !genreBarOpen; render(); };
+      bar.appendChild(toggle);
+
+      // Active chips always visible; rest only when open
       genres.forEach(genre => {
+        if (!genreBarOpen && !filterGenres.has(genre)) return;
         const btn = document.createElement('button');
         btn.className = 'chip genre-chip' + (filterGenres.has(genre) ? ' active' : '');
         btn.textContent = genre;

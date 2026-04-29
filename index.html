@@ -1202,25 +1202,37 @@
   #home-share {
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: 10px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 10px 14px;
+  }
+  .home-share-icon { font-size: 18px; flex-shrink: 0; line-height: 1; }
+  .home-share-label {
+    flex: 1;
+    font-size: 11px;
+    color: var(--muted);
   }
   #home-share-btn {
     background: var(--surface2);
     border: 1px solid var(--border);
     border-radius: 6px;
-    padding: 6px 12px;
-    color: var(--muted);
+    padding: 6px 14px;
+    color: var(--text);
     font-family: inherit;
     font-size: 10px;
     letter-spacing: 1px;
     text-transform: uppercase;
     cursor: pointer;
+    flex-shrink: 0;
   }
-  #home-share-btn:hover { color: var(--text); border-color: #555; }
+  #home-share-btn:hover { border-color: #555; }
   #home-share-status {
     font-size: 10px;
     letter-spacing: 1px;
     color: var(--muted);
+    flex-shrink: 0;
   }
 
   /* ── BRING LIST ──────────────────────────────────────────────── */
@@ -1697,7 +1709,9 @@
     <div class="home-stats" id="home-stats"></div>
 
     <div id="home-share">
-      <button id="home-share-btn" onclick="shareAppLink()">🔗 Invite friends to this planner</button>
+      <span class="home-share-icon">🔗</span>
+      <span class="home-share-label">Invite friends to plan together</span>
+      <button id="home-share-btn" onclick="shareAppLink()">Share</button>
       <span id="home-share-status"></span>
     </div>
 
@@ -2424,7 +2438,7 @@ function renderHomeView() {
 
   const prompt = document.getElementById('home-hero-prompt');
   prompt.textContent = myName
-    ? `🎉 You're in as ${myName}. Pick any feature below.`
+    ? `You're in as ${myName}.`
     : '👇 Type your name in the bar above to get started.';
 
   const stats = document.getElementById('home-stats');
@@ -2451,6 +2465,11 @@ function renderHomeView() {
 function renderHomeFlowSnapshot() {
   const el = document.getElementById('home-flow-snapshot');
   if (!el || !db.lineup) return;
+
+  if (Date.now() < FAST_POLL_START) {
+    el.innerHTML = '';
+    return;
+  }
 
   const fDay = festivalDay();
   const dayKey = fDay || 'friday';
@@ -3525,7 +3544,8 @@ function updateCountdown() {
   }
   const diff = FAST_POLL_START - now;
   if (diff <= 0) {
-    el.innerHTML = '<span class="countdown-live">Festival is live! 🎉</span>';
+    // Festival is live — hide the countdown to free space for the flow snapshot
+    el.style.display      = 'none';
     heading.style.display = 'none';
     return;
   }

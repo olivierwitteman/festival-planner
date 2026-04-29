@@ -951,6 +951,64 @@
     pointer-events: none;
     z-index: 0;
   }
+  .flow-now-line {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    width: 2px;
+    background: #FF3B30;
+    pointer-events: none;
+    z-index: 15;
+    box-shadow: 0 0 8px rgba(255,59,48,0.55);
+  }
+  .flow-now-line::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -3px;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: #FF3B30;
+  }
+  /* ── HOME FLOW SNAPSHOT ───────────────────────────────────── */
+  .home-flow-snapshot {
+    margin: 0 0 16px;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    overflow: hidden;
+  }
+  .home-flow-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 14px;
+    cursor: pointer;
+    border-bottom: 1px solid var(--border);
+    user-select: none;
+  }
+  .home-flow-header:hover { background: rgba(255,255,255,0.03); }
+  .home-flow-title {
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 1.5px;
+    color: var(--muted);
+    text-transform: uppercase;
+  }
+  .home-flow-more {
+    font-size: 11px;
+    color: var(--accent);
+  }
+  .home-flow-scroll {
+    overflow-x: auto;
+    overflow-y: hidden;
+    -webkit-overflow-scrolling: touch;
+    max-height: 200px;
+  }
+  .home-flow-scroll .flow-wrap { min-width: max-content; }
+  .home-flow-scroll .flow-header { padding: 4px 0 3px; }
+  .home-flow-scroll .flow-row { min-height: 46px; }
+  .home-flow-scroll .flow-act { top: 3px; bottom: 3px; }
 
   /* ── MAP VIEW (per-act) ──────────────────────────────────────── */
   #map-help {
@@ -1646,6 +1704,8 @@
     <div id="home-subscribe"></div>
     <div id="home-install"></div>
 
+    <div id="home-flow-snapshot" class="home-flow-snapshot"></div>
+
     <div class="home-features">
       <button class="home-feature" onclick="setView('stage')">
         <div class="home-feature-icon">🎤</div>
@@ -1809,6 +1869,7 @@ let filterBy        = new Set();   // empty = show all; populated = show acts by
 let filterGenres    = new Set();   // empty = show all genres; populated = show only matching genres
 let genreBarOpen    = false;
 let showOnlyPicked  = false;
+let flowScrolledToNow = false;
 
 // ─── SYNC ─────────────────────────────────────────────────────────────────────
 const configured = typeof JSONBIN_BIN_ID !== 'undefined'
@@ -2251,6 +2312,7 @@ function setDay(day, el) {
 }
 
 function setView(v) {
+  if (v === 'flow') flowScrolledToNow = false;
   activeView = v;
   localStorage.setItem('fp_view', v);
   document.body.dataset.view = v;
@@ -2410,6 +2472,90 @@ function renderHomeView() {
   document.getElementById('home-subscribe').innerHTML = subscribeCTA();
   renderInstallCTA();
   updateCountdown();
+  renderHomeFlowSnapshot();
+}
+
+function renderHomeFlowSnapshot() {
+  const el = document.getElementById('home-flow-snapshot');
+  if (!el || !db.lineup) return;
+
+  const fDay = festivalDay();
+  const dayKey = fDay || 'friday';
+  const dayLabels = { friday: 'Friday 12/06', saturday: 'Saturday 13/06', sunday: 'Sunday 14/06' };
+  const day = activeLineup()[dayKey];
+  if (!day) return;
+
+  const PX = HOME_FLOW_PX;
+  const totalW = Math.round((FLOW_MAX_M - FLOW_MIN_M) * PX);
+
+  const hours = [];
+  for (let h = 12; h <= 28; h++) {
+    const x = Math.round((h * 60 - FLOW_MIN_M) * PX);
+    const label = String(h < 24 ? h : h - 24).padStart(2, '0') + ':00';
+    hours.push({ x, label });
+  }
+  const timeAxis = hours.map(({ x, label }) =>
+    `<span class="flow-hour" style="left:${x}px">${label}</span>`
+  ).join('');
+
+  const nowM = nowToMins();
+  const nowLineX = FLOW_LABEL + Math.round((nowM - FLOW_MIN_M) * PX);
+  const nowLine = nowM >= FLOW_MIN_M && nowM <= FLOW_MAX_M
+    ? `<div class="flow-now-line" style="left:${nowLineX}px"></div>`
+    : '';
+
+  const mc = myName ? (db.members[myName] || myColor || PALETTE[0]) : PALETTE[0];
+
+  const rows = day.stages.map(stage => {
+    const stageActs = day.acts.filter(a => a.stage === stage);
+    if (!stageActs.length) return '';
+
+    const blocks = stageActs.map(act => {
+      const members  = db.marks[act.id] || [];
+      const isMarked = myName && members.includes(myName);
+      const sM = timeToMins(act.start);
+      const eM = timeToMins(act.end);
+      const left  = Math.round((sM - FLOW_MIN_M) * PX);
+      const width = Math.max(Math.round((eM - sM) * PX) - 2, 4);
+      const bg    = isMarked ? rgba(mc, 0.2) : (members.length ? 'rgba(255,255,255,0.05)' : 'var(--surface)');
+      const borderColor = isMarked ? mc : (members.length ? '#333' : 'var(--border)');
+
+      return `<div class="flow-act${isMarked ? ' marked' : ''}"
+          style="left:${left}px;width:${width}px;background:${bg};border-color:${borderColor}"
+          onclick="toggleMark('${act.id}')">
+        <div class="flow-act-name">${actName(act)}</div>
+      </div>`;
+    }).join('');
+
+    return `<div class="flow-row">
+      <div class="flow-stage-label">${stage}</div>
+      <div class="flow-acts" style="width:${totalW}px">${blocks}</div>
+    </div>`;
+  }).filter(Boolean).join('');
+
+  el.innerHTML = `
+    <div class="home-flow-header" onclick="setView('flow')">
+      <span class="home-flow-title">Flow — ${dayLabels[dayKey]}</span>
+      <span class="home-flow-more">Open →</span>
+    </div>
+    <div class="home-flow-scroll" id="home-flow-scroll-inner">
+      <div class="flow-wrap">
+        ${nowLine}
+        <div class="flow-header">
+          <div class="flow-label-spacer"></div>
+          <div class="flow-time-axis" style="width:${totalW}px">${timeAxis}</div>
+        </div>
+        <div class="flow-grid">${rows}</div>
+      </div>
+    </div>`;
+
+  // Scroll mini-flow to center on current time if it's in range
+  if (nowM >= FLOW_MIN_M && nowM <= FLOW_MAX_M) {
+    requestAnimationFrame(() => {
+      const scroll = document.getElementById('home-flow-scroll-inner');
+      if (scroll) scroll.scrollLeft = Math.max(0, nowLineX - scroll.clientWidth / 2);
+    });
+  }
 }
 
 function renderStageView() {
@@ -2638,12 +2784,23 @@ function summaryStatsHTML(memberCount, totalPicks) {
 }
 
 // ─── FLOW / TIMELINE VIEW ─────────────────────────────────────────────────────
-const FLOW_MIN_M  = 720;   // 12:00 in timeToMins space
-const FLOW_MAX_M  = 1680;  // 04:00 next day in timeToMins space
-const PX_PER_MIN  = 2.5;
-const FLOW_LABEL  = 80;    // px width of sticky stage-name column
+const FLOW_MIN_M    = 720;   // 12:00 in timeToMins space
+const FLOW_MAX_M    = 1680;  // 04:00 next day in timeToMins space
+const PX_PER_MIN    = 2.5;
+const HOME_FLOW_PX  = 1.5;  // px per min for the home page mini-flow
+const FLOW_LABEL    = 80;    // px width of sticky stage-name column
 
 function renderFlowView() {
+  // Auto-select the correct festival day when we're live
+  const fDay = festivalDay();
+  if (fDay && activeDay !== fDay) {
+    activeDay = fDay;
+    const dayOrder = ['friday', 'saturday', 'sunday'];
+    document.querySelectorAll('#day-tabs .tab').forEach((t, i) => {
+      t.classList.toggle('active', dayOrder[i] === fDay);
+    });
+  }
+
   const day  = activeLineup()[activeDay];
   let acts   = filterBy.size === 0
     ? day.acts
@@ -2668,6 +2825,13 @@ function renderFlowView() {
   const timeAxis = hours.map(({ x, label }) =>
     `<span class="flow-hour" style="left:${x}px">${label}</span>`
   ).join('');
+
+  // Current-time indicator line
+  const nowM = nowToMins();
+  const nowLineX = FLOW_LABEL + Math.round((nowM - FLOW_MIN_M) * PX_PER_MIN);
+  const nowLine = nowM >= FLOW_MIN_M && nowM <= FLOW_MAX_M
+    ? `<div class="flow-now-line" style="left:${nowLineX}px"></div>`
+    : '';
 
   const mc = myName ? (db.members[myName] || myColor || PALETTE[0]) : PALETTE[0];
 
@@ -2719,6 +2883,7 @@ function renderFlowView() {
   }).filter(Boolean).join('');
 
   document.getElementById('flow-view').innerHTML = `<div class="flow-wrap">
+    ${nowLine}
     ${gridLines}
     <div class="flow-header">
       <div class="flow-label-spacer"></div>
@@ -2728,6 +2893,19 @@ function renderFlowView() {
       ? `<div class="flow-grid">${rows}</div>`
       : `<div class="empty-msg">NO ACTS MATCH THE CURRENT FILTER</div>`}
   </div>`;
+
+  // On first open (per view-switch), scroll so the current time is centered
+  if (!flowScrolledToNow) {
+    flowScrolledToNow = true;
+    const scrollNowM = nowToMins();
+    if (scrollNowM >= FLOW_MIN_M && scrollNowM <= FLOW_MAX_M) {
+      requestAnimationFrame(() => {
+        const el = document.getElementById('flow-view');
+        const x  = FLOW_LABEL + Math.round((scrollNowM - FLOW_MIN_M) * PX_PER_MIN);
+        el.scrollLeft = Math.max(0, x - el.clientWidth / 2);
+      });
+    }
+  }
 }
 
 function renderSummaryView() {
@@ -3234,6 +3412,28 @@ function timeToMins(t) {
   const [h, m] = t.split(':').map(Number);
   // Treat times before 06:00 as next-day (after midnight)
   return (h < 6 ? h + 24 : h) * 60 + m;
+}
+
+// Current local time in the same minutes space (before 06:00 = next-day continuation)
+function nowToMins() {
+  const now = new Date();
+  const h = now.getHours(), m = now.getMinutes();
+  return (h < 6 ? h + 24 : h) * 60 + m;
+}
+
+// Returns the festival day key for today's date, or null if not a festival day.
+// Before 06:00 local time is treated as a continuation of the previous evening.
+function festivalDay() {
+  const now = new Date();
+  const ref = new Date(now);
+  if (now.getHours() < 6) ref.setDate(ref.getDate() - 1);
+  const y = ref.getFullYear(), mo = ref.getMonth(), d = ref.getDate();
+  if (y === 2026 && mo === 5) {  // June 2026
+    if (d === 12) return 'friday';
+    if (d === 13) return 'saturday';
+    if (d === 14) return 'sunday';
+  }
+  return null;
 }
 
 // ─── BOOT ─────────────────────────────────────────────────────────────────────

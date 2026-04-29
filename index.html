@@ -557,6 +557,18 @@
   @media (display-mode: standalone) {
     .view-toggle { display: none; }
 
+    /* Sticky breaks in many PWA environments; fixed is reliable */
+    #header {
+      position: fixed;
+      top: env(safe-area-inset-top, 0);
+      left: 0;
+      right: 0;
+    }
+
+    #content {
+      padding-top: var(--header-height, 0px);
+    }
+
     #bottom-nav {
       display: flex;
       position: fixed;
@@ -3562,6 +3574,15 @@ function updateCountdown() {
 setInterval(updateCountdown, 1000);
 updateCountdown();
 window.addEventListener('pageshow', updateCountdown);
+
+// Keep --header-height in sync with the actual header so fixed-position content
+// padding stays correct when the header grows/shrinks (members bar, name bar, etc.)
+if (window.matchMedia('(display-mode: standalone)').matches || navigator.standalone) {
+  const headerEl = document.getElementById('header');
+  new ResizeObserver(() => {
+    document.documentElement.style.setProperty('--header-height', headerEl.offsetHeight + 'px');
+  }).observe(headerEl);
+}
 
 loadDB().then(() => {
   if (myName && db.members[myName]) myColor = db.members[myName];

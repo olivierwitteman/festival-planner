@@ -2492,7 +2492,7 @@ function renderHomeFlowSnapshot() {
 
   const nowM = nowToMins();
   const nowLineX = FLOW_LABEL + Math.round((nowM - FLOW_MIN_M) * PX);
-  const nowLine = nowM >= FLOW_MIN_M && nowM <= FLOW_MAX_M
+  const nowLine = fDay && fDay === dayKey && nowM >= FLOW_MIN_M && nowM <= FLOW_MAX_M
     ? `<div class="flow-now-line" style="left:${nowLineX}px"></div>`
     : '';
 
@@ -2818,10 +2818,10 @@ function renderFlowView() {
     `<span class="flow-hour" style="left:${x}px">${label}</span>`
   ).join('');
 
-  // Current-time indicator line
+  // Current-time indicator line — only on the actual festival day being viewed
   const nowM = nowToMins();
   const nowLineX = FLOW_LABEL + Math.round((nowM - FLOW_MIN_M) * PX_PER_MIN);
-  const nowLine = nowM >= FLOW_MIN_M && nowM <= FLOW_MAX_M
+  const nowLine = fDay && fDay === activeDay && nowM >= FLOW_MIN_M && nowM <= FLOW_MAX_M
     ? `<div class="flow-now-line" style="left:${nowLineX}px"></div>`
     : '';
 

@@ -1,7 +1,6 @@
 // Daily ICS generator for the BKS Planner.
 //
-// Fetches the shared picks from JSONBin, reads the lineup straight out of
-// index.html (so there is no second source of truth to drift), and writes:
+// Fetches the shared state (picks + lineup) from JSONBin and writes:
 //
 //   calendar/everyone.ics            — every picked act, with all pickers
 //   calendar/person-<safe-name>.ics  — per-member feed
@@ -28,30 +27,6 @@ if (!BIN_ID || !API_KEY) {
   console.error('Missing JSONBIN_BIN_ID or JSONBIN_API_KEY (set repo secrets or fill config.js).');
   process.exit(1);
 }
-
-// ─── Lineup extraction ────────────────────────────────────────────────────────
-// Pulls the DAYS object literal out of index.html via brace counting and evals it.
-function extractDays() {
-  const html = fs.readFileSync(path.join(ROOT, 'index.html'), 'utf8');
-  const marker = 'const DAYS = ';
-  const start = html.indexOf(marker);
-  if (start < 0) throw new Error('DAYS literal not found in index.html');
-  let i = start + marker.length;
-  // i now points at '{'
-  if (html[i] !== '{') throw new Error('DAYS does not start with {');
-  let depth = 0;
-  for (; i < html.length; i++) {
-    const c = html[i];
-    if (c === '{') depth++;
-    else if (c === '}') {
-      depth--;
-      if (depth === 0) { i++; break; }
-    }
-  }
-  const expr = html.slice(start + marker.length, i);
-  return new Function(`return ${expr};`)();
-}
-const DAYS = extractDays();
 
 const FESTIVAL_DATES = {
   friday:   '2026-06-12',
@@ -87,9 +62,9 @@ function icsEsc(s) {
   return String(s).replace(/[\\;,]/g, '\\$&').replace(/\n/g, '\\n');
 }
 
-function buildActMap() {
+function buildActMap(days) {
   const map = {};
-  for (const [dayKey, d] of Object.entries(DAYS)) {
+  for (const [dayKey, d] of Object.entries(days)) {
     for (const a of d.acts) map[a.id] = { ...a, dayKey };
   }
   return map;
@@ -168,7 +143,12 @@ async function fetchDB() {
 
 async function main() {
   const db     = await fetchDB();
-  const actMap = buildActMap();
+  const lineup = db.lineup || {};
+  if (!Object.keys(lineup).length) {
+    console.error('No lineup data found in JSONBin record (db.lineup is empty).');
+    process.exit(1);
+  }
+  const actMap = buildActMap(lineup);
   const outDir = path.join(ROOT, 'calendar');
   fs.mkdirSync(outDir, { recursive: true });
 

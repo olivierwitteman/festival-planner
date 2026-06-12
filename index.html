@@ -2796,11 +2796,12 @@ const HOME_FLOW_PX  = 1.5;  // px per min for the home page mini-flow
 const FLOW_LABEL    = 80;    // px width of sticky stage-name column
 
 function renderFlowView() {
+  const fDay = festivalDay();
+
   // Auto-select the correct festival day on first render only, so the user
   // can freely switch days afterwards without being overridden on every render.
   if (!flowAutoJumped) {
     flowAutoJumped = true;
-    const fDay = festivalDay();
     if (fDay && activeDay !== fDay) {
       activeDay = fDay;
       const dayOrder = ['friday', 'saturday', 'sunday'];

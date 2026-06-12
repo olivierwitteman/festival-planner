@@ -1869,6 +1869,7 @@ let filterGenres    = new Set();   // empty = show all genres; populated = show 
 let genreBarOpen    = false;
 let showOnlyPicked  = false;
 let flowScrolledToNow = false;
+let flowAutoJumped    = false;
 
 // ─── SYNC ─────────────────────────────────────────────────────────────────────
 const configured = typeof JSONBIN_BIN_ID !== 'undefined'
@@ -2795,14 +2796,18 @@ const HOME_FLOW_PX  = 1.5;  // px per min for the home page mini-flow
 const FLOW_LABEL    = 80;    // px width of sticky stage-name column
 
 function renderFlowView() {
-  // Auto-select the correct festival day when we're live
-  const fDay = festivalDay();
-  if (fDay && activeDay !== fDay) {
-    activeDay = fDay;
-    const dayOrder = ['friday', 'saturday', 'sunday'];
-    document.querySelectorAll('#day-tabs .tab').forEach((t, i) => {
-      t.classList.toggle('active', dayOrder[i] === fDay);
-    });
+  // Auto-select the correct festival day on first render only, so the user
+  // can freely switch days afterwards without being overridden on every render.
+  if (!flowAutoJumped) {
+    flowAutoJumped = true;
+    const fDay = festivalDay();
+    if (fDay && activeDay !== fDay) {
+      activeDay = fDay;
+      const dayOrder = ['friday', 'saturday', 'sunday'];
+      document.querySelectorAll('#day-tabs .tab').forEach((t, i) => {
+        t.classList.toggle('active', dayOrder[i] === fDay);
+      });
+    }
   }
 
   const day  = activeLineup()[activeDay];

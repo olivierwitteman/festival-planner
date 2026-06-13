@@ -43,6 +43,9 @@ always in sync.
 - Off-festival it shows your next upcoming pick, or a wrap-up once it's over.
 - **Small** widget shows the single most relevant slot; **Medium** shows both
   *now* and *next*.
+- **Large** widget shows the **rest of today** — every pick you've still got
+  coming, as a timeline (time · act · stage), with the one playing now marked
+  ▶. Acts after midnight stay grouped with that evening's day.
 
 ## Refresh notes
 

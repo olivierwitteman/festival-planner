@@ -66,6 +66,31 @@ function dayLabel(dayKey) {
   return { friday: "Fri 12 Jun", saturday: "Sat 13 Jun", sunday: "Sun 14 Jun" }[dayKey] || "";
 }
 
+// Date parts in Europe/Amsterdam, regardless of the phone's own timezone.
+function amsParts(date) {
+  const f = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Europe/Amsterdam",
+    year: "numeric", month: "2-digit", day: "2-digit",
+    hour: "2-digit", minute: "2-digit", hour12: false
+  });
+  return Object.fromEntries(f.formatToParts(date).map(p => [p.type, p.value]));
+}
+
+// Which festival day is "now"? Before 06:00 counts as the previous evening,
+// matching the web app's festivalDay().
+function festivalDayKey(date) {
+  const p = amsParts(date);
+  let y = +p.year, mo = +p.month, d = +p.day;
+  if (+p.hour < 6) {
+    const prev = new Date(Date.UTC(y, mo - 1, d));
+    prev.setUTCDate(prev.getUTCDate() - 1);
+    y = prev.getUTCFullYear(); mo = prev.getUTCMonth() + 1; d = prev.getUTCDate();
+  }
+  const iso = `${y}-${String(mo).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
+  for (const [k, v] of Object.entries(FESTIVAL_DATES)) if (v === iso) return k;
+  return null;
+}
+
 async function fetchDB() {
   const req = new Request(`https://api.jsonbin.io/v3/b/${JSONBIN_BIN_ID}/latest`);
   req.headers = { "X-Access-Key": JSONBIN_API_KEY };
@@ -171,7 +196,66 @@ function messageWidget(text, sub) {
   return w;
 }
 
-function buildWidget(db, name) {
+// One timeline row for the Large widget: "14:00  ▶ Act name        Stage".
+function listRow(stack, pick, now) {
+  const isNow = pick.start <= now && now < pick.end;
+  const row = stack.addStack();
+  row.centerAlignContent();
+
+  const time = row.addText(fmtClock(pick.start));
+  time.font = Font.mediumSystemFont(12);
+  time.textColor = isNow ? COL_ACCENT : COL_MUTED;
+  time.lineLimit = 1;
+  row.addSpacer(8);
+
+  const title = row.addText((isNow ? "▶ " : "") + pick.name);
+  title.font = isNow ? Font.boldSystemFont(13) : Font.systemFont(13);
+  title.textColor = COL_TEXT;
+  title.lineLimit = 1;
+  title.minimumScaleFactor = 0.7;
+  row.addSpacer();
+
+  const stage = row.addText(pick.stage);
+  stage.font = Font.systemFont(10);
+  stage.textColor = COL_MUTED;
+  stage.lineLimit = 1;
+  stage.minimumScaleFactor = 0.7;
+}
+
+// Large widget: the rest of today's picks as a timeline list.
+function buildLargeWidget(name, picks, now, nowP, next) {
+  const w = new ListWidget();
+  w.backgroundColor = COL_BG;
+  w.setPadding(14, 16, 14, 16);
+  headerRow(w, name);
+
+  const activeDay = festivalDayKey(now)
+    || (nowP && nowP.dayKey) || (next && next.dayKey) || null;
+  let remaining = picks.filter(p => p.dayKey === activeDay && p.end > now);
+  // Off-day (or between days): just show whatever's still upcoming.
+  if (!remaining.length) remaining = picks.filter(p => p.end > now);
+
+  w.addSpacer(4);
+  const sub = w.addText(activeDay ? `${dayLabel(activeDay)} · rest of day` : "Upcoming");
+  sub.font = Font.boldSystemFont(10);
+  sub.textColor = COL_ACCENT;
+  w.addSpacer(8);
+
+  const MAX = 9;
+  for (const p of remaining.slice(0, MAX)) {
+    listRow(w, p, now);
+    w.addSpacer(7);
+  }
+  if (remaining.length > MAX) {
+    const more = w.addText(`+${remaining.length - MAX} more`);
+    more.font = Font.systemFont(10);
+    more.textColor = COL_MUTED;
+  }
+  w.addSpacer();
+  return w;
+}
+
+function buildWidget(db, name, family) {
   if (!name) {
     return messageWidget("Set your name", "Long-press → Edit Widget → Parameter");
   }
@@ -191,7 +275,9 @@ function buildWidget(db, name) {
     return messageWidget("That's a wrap 🎉", `${picks.length} acts seen · last was ${last.name}`);
   }
 
-  const small = config.widgetFamily === "small";
+  if (family === "large") return buildLargeWidget(name, picks, now, nowP, next);
+
+  const small = family === "small";
   const w = new ListWidget();
   w.backgroundColor = COL_BG;
   w.setPadding(12, 14, 12, 14);
@@ -223,10 +309,14 @@ function buildWidget(db, name) {
 const paramName = (args.widgetParameter || "").trim();
 const name = paramName || MY_NAME.trim();
 
+// When run inside a widget iOS tells us the size; when run in-app for a preview
+// we default to Large so the new timeline view is visible.
+const family = config.widgetFamily || "large";
+
 let widget;
 try {
   const db = await fetchDB();
-  widget = buildWidget(db, name);
+  widget = buildWidget(db, name, family);
 } catch (e) {
   widget = messageWidget("Couldn't load", String(e).slice(0, 60));
 }
@@ -236,6 +326,10 @@ widget.refreshAfterDate = new Date(Date.now() + 5 * 60 * 1000);
 
 if (config.runsInWidget) {
   Script.setWidget(widget);
+} else if (family === "small") {
+  await widget.presentSmall();
+} else if (family === "large") {
+  await widget.presentLarge();
 } else {
   await widget.presentMedium();
 }

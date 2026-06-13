@@ -74,6 +74,13 @@ To override, set `JSONBIN_BIN_ID` and `JSONBIN_API_KEY` as repository secrets.
 > 1–24 h), so changes can take up to a day to land. Edit the festival window
 > in the workflow file when reusing this for a different year.
 
+## 📲 iOS live home-screen widget
+
+Want your picks on your iPhone home screen? `widget/bks-widget.js` is a free
+[Scriptable](https://scriptable.app) widget that shows what you're seeing **now**
+and **up next**, live from the same shared feed. See
+[`widget/README.md`](widget/README.md) for the 2-minute install.
+
 ## 🛠 No-backend option
 
 If you don’t want to set up JSONBin, the app runs in **local mode** — each device saves its own state. Good enough for planning individually, but picks won’t sync across devices.
